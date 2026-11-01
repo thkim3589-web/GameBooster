@@ -3,7 +3,7 @@ name: Build & Release APK
 on:
   push:
     branches: [main]
-    paths-ignore: ['README.md']
+    paths-ignore: ['README.md', 'tools/**', '.github/workflows/lint.yml']
   workflow_dispatch:
 
 permissions:

@@ -151,8 +151,9 @@ public class Hud {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.START;
-        lp.x = prefs.getInt("hudX", dp(12));
-        lp.y = prefs.getInt("hudY", dp(80));
+        android.util.DisplayMetrics dm0 = c.getResources().getDisplayMetrics();
+        lp.x = Math.min(prefs.getInt("hudX", dp(12)), Math.max(0, dm0.widthPixels - dp(240)));
+        lp.y = Math.min(prefs.getInt("hudY", dp(80)), Math.max(0, dm0.heightPixels - dp(260)));
 
         View.OnTouchListener drag = new Drag();
         panel.setOnTouchListener(drag);
@@ -240,14 +241,14 @@ public class Hud {
         int tColor = temp >= 42 ? RED : temp >= 38 ? ORANGE : GREEN;
         int pColor = ping < 0 ? SUB : ping <= 60 ? GREEN : ping <= 120 ? ORANGE : RED;
 
-        tvRam.setText(String.format("%.1fGB (%d%%)", mi.availMem / 1073741824.0, freePct));
+        tvRam.setText(String.format(java.util.Locale.US, "%.1fGB (%d%%)", mi.availMem / 1073741824.0, freePct));
         tvRam.setTextColor(freePct < 15 ? RED : freePct < 25 ? ORANGE : TEXT);
         tvPing.setText(ping == -2 ? "측정 중" : ping == -1 ? "끊김" : ping + "ms");
         tvPing.setTextColor(ping == -1 ? RED : pColor);
         tvHz.setText(Math.round(hz) + "Hz");
-        tvBat.setText(lvl + "% · " + String.format("%.1f℃", temp));
+        tvBat.setText(lvl + "%" + (temp > 0 ? String.format(java.util.Locale.US, " · %.1f℃", temp) : ""));
         tvBat.setTextColor(tColor);
-        tvTime.setText(String.format("%02d:%02d:%02d", sec / 3600, sec / 60 % 60, sec % 60));
+        tvTime.setText(String.format(java.util.Locale.US, "%02d:%02d:%02d", sec / 3600, sec / 60 % 60, sec % 60));
 
         boolean hot = temp >= 42;
         boolean fl = System.currentTimeMillis() < flashUntil;
@@ -256,7 +257,7 @@ public class Hud {
         tvWarn.setTextColor(fl ? 0xFFFACC15 : RED);
         panel.setBackground(bg(BG, fl ? 0xFFFACC15 : hot ? RED : CYAN, dp(16)));
 
-        bTemp.setText(String.format("%.0f°", temp));
+        bTemp.setText(temp > 0 ? String.format(java.util.Locale.US, "%.0f°", temp) : lvl + "%");
         bTemp.setTextColor(tColor);
         bPing.setText(ping >= 0 ? ping + "ms" : ping == -1 ? "끊김" : "…");
         bubble.setBackground(bg(BG, hot ? RED : CYAN, dp(32)));
@@ -276,14 +277,17 @@ public class Hud {
                     int dx = (int) (e.getRawX() - tx), dy = (int) (e.getRawY() - ty);
                     if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) moved = true;
                     if (moved) {
-                        lp.x = Math.max(0, sx + dx);
-                        lp.y = Math.max(0, sy + dy);
+                        android.util.DisplayMetrics dm = c.getResources().getDisplayMetrics();
+                        View cur = minimized ? bubble : panel;
+                        int w = cur.getWidth() > 0 ? cur.getWidth() : dp(64), hh = cur.getHeight() > 0 ? cur.getHeight() : dp(64);
+                        lp.x = Math.max(0, Math.min(dm.widthPixels - w, sx + dx));
+                        lp.y = Math.max(0, Math.min(dm.heightPixels - hh, sy + dy));
                         try { wm.updateViewLayout(minimized ? bubble : panel, lp); } catch (Exception ignored) {}
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
                     if (moved) prefs.edit().putInt("hudX", lp.x).putInt("hudY", lp.y).apply();
-                    else if (minimized && v == bubble) setMinimized(false);
+                    else { v.performClick(); if (minimized && v == bubble) setMinimized(false); }
                     return true;
             }
             return false;

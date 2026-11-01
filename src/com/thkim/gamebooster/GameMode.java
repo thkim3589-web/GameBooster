@@ -62,19 +62,22 @@ public class GameMode {
             if (m.optBoolean("dnd") && nm.isNotificationPolicyAccessGranted()) {
                 int cur = nm.getCurrentInterruptionFilter();
                 if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) {
-                    restore.put("dnd", cur);
                     nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+                    restore.put("dnd", cur);
                 }
             }
+        } catch (Exception ignored) {}
+        try {
             int vol = m.optInt("mediaVol", -1);
             if (vol >= 0) {
                 AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
                 int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                restore.put("vol", am.getStreamVolume(AudioManager.STREAM_MUSIC));
+                int before = am.getStreamVolume(AudioManager.STREAM_MUSIC);
                 am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.round(max * vol / 100f), 0);
+                restore.put("vol", before);
             }
-            prefs(c).edit().putString("modeRestore", restore.toString()).apply();
         } catch (Exception ignored) {}
+        prefs(c).edit().putString("modeRestore", restore.toString()).apply();
         return m;
     }
 
@@ -83,12 +86,15 @@ public class GameMode {
         String s = prefs(c).getString("modeRestore", null);
         if (s == null) return;
         prefs(c).edit().remove("modeRestore").apply();
+        JSONObject r;
+        try { r = new JSONObject(s); } catch (Exception e) { return; }
         try {
-            JSONObject r = new JSONObject(s);
             if (r.has("dnd")) {
                 NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
                 if (nm.isNotificationPolicyAccessGranted()) nm.setInterruptionFilter(r.getInt("dnd"));
             }
+        } catch (Exception ignored) {}
+        try {
             if (r.has("vol")) {
                 AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
                 am.setStreamVolume(AudioManager.STREAM_MUSIC, r.getInt("vol"), 0);

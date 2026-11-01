@@ -79,6 +79,13 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .seg{display:flex;gap:6px;margin:8px 0 14px}
 .seg button{flex:1;padding:11px 0;border-radius:12px;background:var(--bg);border:2px solid var(--line);color:var(--sub);font-weight:700;font-size:15px}
 .seg button.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
+.tier{display:flex;align-items:center;gap:14px;background:var(--bg);border-radius:16px;padding:14px;margin:12px 0}
+.tier .bars4{display:flex;align-items:flex-end;gap:4px;height:46px}
+.tier .bars4 i{width:12px;border-radius:3px;background:var(--card2)}
+.gset{display:flex;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.gset .gi{font-size:22px;width:28px;text-align:center}
+.gset .gt{flex:1}
+.gset .gv{font-weight:800;white-space:nowrap}
 .mlabel{font-weight:700;margin-top:6px}
 .dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
@@ -242,6 +249,12 @@ nav button.on{color:var(--cyan)}
   <!-- 탭3 상태 -->
   <section class="tab" id="t-status">
     <div class="stats" id="stats"></div>
+    <div class="card" style="margin-top:14px">
+      <div class="row">
+        <div><div style="font-weight:700">🎨 그래픽 설정 추천</div><div class="sub">내 휴대폰 사양과 지난 게임 기록으로 게임 안 그래픽 설정을 골라줘요</div></div>
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="openGfx()">추천 보기</button>
+    </div>
     <div class="card" style="margin-top:14px" id="ncCard">
       <h3 style="margin-bottom:4px">와이파이 vs 4G/5G</h3>
       <div class="sub">두 연결을 동시에 10번씩 재서 지금 게임하기 더 좋은 쪽을 알려줘요</div>
@@ -297,6 +310,14 @@ nav button.on{color:var(--cyan)}
       <button class="btn" style="flex:1" id="upLater" onclick="closeUpdate()">나중에</button>
       <button class="btn pri" style="flex:2" id="upGo" onclick="startUpdate()">지금 설치</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="gfxSheet" onclick="if(event.target===this)closeGfx()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px">🎨 그래픽 설정 추천</b></div>
+    <div class="bd" id="gfxBody"></div>
+    <div class="ft"><button class="btn pri" onclick="closeGfx()">닫기</button></div>
   </div>
 </div>
 
@@ -366,7 +387,7 @@ function renderChecks(s){
   items.push({ic:'🔋',t:'배터리 '+s.battery+'%'+(s.charging?' (충전 중)':''),
     st:s.battery>=30?['ok','양호']:s.battery>=15?['warn','부족']:['bad','충전 필요'], go:null});
   const tc = s.temp>=42?['bad','과열']:s.temp>=38?['warn','따뜻함']:['ok','정상'];
-  items.push({ic:'🌡️',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
+  if(s.temp>0) items.push({ic:'🌡️',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
   items.push({ic:'⚙️',t:'절전 모드 '+(s.powerSave?'켜짐 — 성능이 제한돼요':'꺼짐'),st:s.powerSave?['warn','끄기 권장']:['ok','좋음'],go:s.powerSave?'battery':null});
   items.push({ic:'📶',t:'네트워크 '+s.net+(s.net==='모바일 데이터'?' — 와이파이가 더 안정적일 수 있어요':''),
     st:s.net==='연결 없음'?['bad','끊김']:s.net==='와이파이'?['ok','좋음']:['warn','확인'],go:s.net==='연결 없음'?'wifi':'compare'});
@@ -595,6 +616,55 @@ function onNetCompare(json, silent){
 }
 function loadLastCompare(){ if(N&&N.lastNetCompare){const s=N.lastNetCompare(); if(s&&!$('ncResult').innerHTML) onNetCompare(s)} }
 
+/* ---------- 그래픽 설정 추천 ---------- */
+function gfxRecommend(sp, sess){
+  const ram=sp.ramGb||0, cores=sp.cores||0, ghz=sp.maxGhz||0, hz=sp.maxHz||60;
+  let tier = (ram>=7.5&&cores>=8&&ghz>=2.8)?4 : (ram>=7.5&&ghz>=2.3)?3 : ram>=5.5?2 : ram>=3.5?1 : 0;
+  const why=[];
+  why.push(`RAM ${ram}GB · ${cores}코어${ghz?' 최대 '+ghz+'GHz':''}`);
+  // 지난 기록에서 발열로 성능이 떨어진 적이 많으면 한 단계 낮춤
+  const recent=(sess||[]).slice(0,6);
+  const throttled=recent.filter(x=>x.thermalMax>=3||x.hotMin>=3).length;
+  let heatNote='';
+  if(recent.length>=2 && throttled>=2 && tier>0){ tier--; heatNote=`최근 ${recent.length}판 중 ${throttled}판에서 발열로 성능이 제한돼서 한 단계 낮췄어요`; }
+  const names=['최저','낮음','보통','높음(HD)','최상'];
+  const fpsCap=[30,30,60,90,120][tier];
+  const fps=Math.min(hz, heatNote? Math.min(fpsCap,60) : fpsCap);
+  const rows=[];
+  rows.push({i:'🎚',t:'그래픽 품질',v:names[tier],c:tier>=3?'var(--green)':tier>=2?'var(--cyan)':'var(--orange)',
+    r:`이 휴대폰은 ${['최저','낮음','보통','높음','최상'][tier]} 등급이에요.`+(heatNote?' '+heatNote+'.':'')});
+  rows.push({i:'🎞',t:'프레임(fps)',v:fps+' fps',c:'var(--green)',
+    r: hz<fpsCap&&!heatNote ? `화면이 최대 ${hz}Hz라서 ${fpsCap}fps로 올려도 ${hz}fps까지만 보여요.`
+      : heatNote ? '발열이 잦아서 프레임을 60으로 묶으면 오래 부드럽게 유지돼요.'
+      : `이 등급은 ${fps}fps까지 무리 없이 돌아가요.`+(fps>=90?' 배터리를 아끼려면 60으로 낮추세요.':'')});
+  rows.push({i:'🖼',t:'해상도',v:tier>=3?'기본 유지':tier===2?'기본 또는 한 단계 낮게':'낮게',c:tier>=3?'var(--cyan)':'var(--orange)',
+    r: tier>=3?'메모리가 넉넉해서 해상도를 낮추면 화면만 흐려져요.':'해상도를 낮추면 프레임이 가장 크게 좋아져요.'});
+  rows.push({i:'🌓',t:'그림자',v:tier>=4?'높음':tier===3?'중간':tier===2?'낮음':'끄기',c:tier>=3?'var(--green)':'var(--orange)',
+    r:'그림자는 가장 무거운 효과예요.'+(tier<=2?' 끄면 체감 성능이 바로 좋아져요.':' 이 등급은 감당할 여유가 있어요.')});
+  rows.push({i:'🧱',t:'텍스처',v:ram>=11?'높음':ram>=7.5?'중간':ram>=5.5?'중간':'낮음',c:ram>=7.5?'var(--green)':'var(--orange)',
+    r:`텍스처는 주로 메모리를 써요. RAM ${ram}GB면 ${ram>=11?'높음':ram>=5.5?'중간':'낮음'}이 알맞아요.`});
+  rows.push({i:'✨',t:'안티앨리어싱',v:tier>=4?'켜기':'끄기',c:tier>=4?'var(--green)':'var(--sub)',
+    r: tier>=4?'계단 현상을 줄여줘요. 여유가 있어서 켜도 괜찮아요.':'휴대폰 화면은 촘촘해서 꺼도 차이가 작고 성능 이득은 커요.'});
+  rows.push({i:'💥',t:'효과·파티클',v:tier>=3?'중간':'낮음',c:tier>=3?'var(--cyan)':'var(--orange)',
+    r:'한타·폭발 장면에서 프레임이 떨어진다면 이것부터 낮추세요.'});
+  return {tier,names,rows,why,heatNote};
+}
+function openGfx(){
+  if(!N||!N.getSpecs){toast('휴대폰 앱에서만 동작해요');return}
+  const sp=JSON.parse(N.getSpecs()); let sess=[]; try{sess=JSON.parse(N.getSessions())}catch(e){}
+  const g=gfxRecommend(sp,sess);
+  const bars=[0,1,2,3,4].map(k=>`<i style="height:${30+k*17}%;background:${k<=g.tier?'var(--green)':'var(--card2)'}"></i>`).join('');
+  $('gfxBody').innerHTML=`
+    <div class="tier"><div class="bars4">${bars}</div>
+      <div><div class="sub" style="font-size:14px">추천 등급</div><div style="font-size:26px;font-weight:800;color:var(--green)">${g.names[g.tier]}</div>
+      <div class="sub" style="font-size:14px">${g.why[0]} · ${sp.maxHz}Hz · ${sp.resW}×${sp.resH}</div></div></div>
+    <div class="sub" style="font-size:14px;margin-bottom:6px">ℹ️ 게임 안 설정 메뉴에서 직접 바꾸는 추천값이에요. 게임부스터가 게임 설정을 바꾸거나 게임 자체를 빠르게 할 수는 없어요.</div>
+    ${g.rows.map(r=>`<div class="gset"><div class="gi">${r.i}</div><div class="gt"><div class="row"><b>${r.t}</b><span class="gv" style="color:${r.c}">${r.v}</span></div><div class="sub" style="font-size:15px">${r.r}</div></div></div>`).join('')}
+    <div class="sub" style="font-size:14px;margin:8px 0 12px">${esc(sp.model)} · ${esc(sp.soc||'')}</div>`;
+  $('gfxSheet').classList.add('on');
+}
+function closeGfx(){ $('gfxSheet').classList.remove('on') }
+
 /* ---------- 게임별 모드 ---------- */
 let modePkg=null, modeData=null, modeInfo=null, modeWaitOverlay=false;
 function openMode(pkg,label){
@@ -692,7 +762,7 @@ function compareText(s){
 }
 function adviceText(s){
   const a=[];
-  if(s.thermalMax>=3) a.push('🔥 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요.');
+  if(s.thermalMax>=3) a.push('🔥 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" onclick="closeReport();openGfx()">그래픽 추천 보기</button>');
   if(s.charged&&s.tMax>=40) a.push('🔌 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
   if(s.tMax>=42&&!s.charged) a.push('🧊 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
   if(s.perHour>=25) a.push('🔋 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
@@ -735,6 +805,7 @@ window.onAppResume=()=>{
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{
+  if($('gfxSheet').classList.contains('on')){closeGfx();return true}
   if($('modeSheet').classList.contains('on')){closeMode();return true}
   if($('repSheet').classList.contains('on')){closeReport();return true}
   if($('upSheet').classList.contains('on')){closeUpdate();return true}

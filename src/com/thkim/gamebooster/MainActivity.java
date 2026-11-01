@@ -496,6 +496,36 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {}
         }
 
+        /** 그래픽 추천용 기기 사양 */
+        @JavascriptInterface
+        public String getSpecs() {
+            try {
+                JSONObject o = new JSONObject();
+                long[] m = mem();
+                o.put("ramGb", Math.round(m[0] / 1073741824.0 * 10) / 10.0);
+                o.put("cores", Runtime.getRuntime().availableProcessors());
+                long maxKhz = 0;
+                for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+                    String f = readFirstLine("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+                    if (f != null) try { maxKhz = Math.max(maxKhz, Long.parseLong(f.trim())); } catch (Exception ignored) {}
+                }
+                o.put("maxGhz", Math.round(maxKhz / 100000.0) / 10.0);
+                android.view.Display d = getWindowManager().getDefaultDisplay();
+                float maxHz = d.getRefreshRate();
+                for (android.view.Display.Mode md : d.getSupportedModes()) maxHz = Math.max(maxHz, md.getRefreshRate());
+                o.put("maxHz", Math.round(maxHz));
+                o.put("curHz", Math.round(d.getRefreshRate()));
+                android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+                d.getRealMetrics(dm);
+                o.put("resW", Math.max(dm.widthPixels, dm.heightPixels));
+                o.put("resH", Math.min(dm.widthPixels, dm.heightPixels));
+                o.put("soc", Build.VERSION.SDK_INT >= 31 ? Build.SOC_MANUFACTURER + " " + Build.SOC_MODEL : Build.HARDWARE);
+                o.put("model", Build.MANUFACTURER + " " + Build.MODEL);
+                o.put("android", Build.VERSION.SDK_INT);
+                return o.toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
         @JavascriptInterface
         public String getGameMode(String pkg) {
             try {

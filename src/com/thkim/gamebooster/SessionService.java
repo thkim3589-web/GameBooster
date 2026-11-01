@@ -55,6 +55,7 @@ public class SessionService extends Service {
     /** 게임 실행 직전에 부른다 */
     static void begin(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter, boolean record) {
         try {
+            if (metaFile(c).exists()) finish(c);        // 끝나지 않은 이전 세션 정리 + 설정 복원
             JSONObject mode = GameMode.apply(c, pkg);   // 게임별 모드 적용 (끝나면 복원)
             JSONObject m = new JSONObject();
             m.put("record", record);

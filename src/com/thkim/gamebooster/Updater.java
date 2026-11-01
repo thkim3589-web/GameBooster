@@ -79,7 +79,7 @@ public class Updater {
             JSONArray assets = rel.optJSONArray("assets");
             if (assets != null) for (int i = 0; i < assets.length(); i++) {
                 JSONObject a = assets.getJSONObject(i);
-                if (a.optString("name").toLowerCase().endsWith(".apk")) {
+                if (a.optString("name").toLowerCase(java.util.Locale.ROOT).endsWith(".apk")) {
                     apk = a.optString("browser_download_url");
                     r.put("size", a.optLong("size"));
                     break;
