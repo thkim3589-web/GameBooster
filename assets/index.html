@@ -86,6 +86,20 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .gset .gi{font-size:22px;width:28px;text-align:center}
 .gset .gt{flex:1}
 .gset .gv{font-weight:800;white-space:nowrap}
+/* 처음 안내 */
+.onb{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;flex-direction:column}
+.onb.on{display:flex}
+.onb .top{padding:26px 20px 10px}
+.onb .top h2{margin:6px 0 4px;font-size:26px}
+.onb .list{flex:1;overflow:auto;padding:4px 16px}
+.prm{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.prm .pi{font-size:28px;width:36px;text-align:center}
+.prm .pt{flex:1}
+.prm .pt b{font-size:17px}
+.prm .tag{font-size:12px;font-weight:800;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+.prm .ok{color:var(--green);font-weight:800;white-space:nowrap}
+.prm button{background:var(--cyan);color:#04151B;border-radius:12px;padding:10px 12px;font-weight:800;font-size:15px;white-space:nowrap}
+.onb .bot{padding:12px 16px 18px;border-top:1px solid var(--line);display:flex;gap:10px}
 .mlabel{font-weight:700;margin-top:6px}
 .dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
@@ -274,6 +288,12 @@ nav button.on{color:var(--cyan)}
     </div>
     <div class="card">
       <div class="row">
+        <div><div style="font-weight:700">🔐 권한 관리</div><div class="sub" id="permSub">기능별로 필요한 권한을 확인해요</div></div>
+        <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" onclick="openOnb()">열기</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
         <div><div style="font-weight:700">앱 버전</div><div class="sub" id="verSub">확인 중…</div></div>
         <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" id="verBtn" onclick="manualCheck()">업데이트 확인</button>
       </div>
@@ -314,6 +334,20 @@ nav button.on{color:var(--cyan)}
       <button class="btn" style="flex:1" id="upLater" onclick="closeUpdate()">나중에</button>
       <button class="btn pri" style="flex:2" id="upGo" onclick="startUpdate()">지금 설치</button>
     </div>
+  </div>
+</div>
+
+<div class="onb" id="onb">
+  <div class="top">
+    <div style="font-size:40px">⚡🎮</div>
+    <h2>게임부스터 시작하기</h2>
+    <div class="sub">기능을 쓰려면 아래 권한이 필요해요. 하나씩 눌러 허용하고 돌아오면 자동으로 체크돼요.</div>
+    <div style="margin-top:10px;font-weight:800" id="onbCount"></div>
+  </div>
+  <div class="list" id="onbList"></div>
+  <div class="bot">
+    <button class="btn" style="flex:1" onclick="closeOnb()">나중에</button>
+    <button class="btn pri" style="flex:2" onclick="closeOnb()" id="onbGo">시작하기</button>
   </div>
 </div>
 
@@ -620,6 +654,29 @@ function onNetCompare(json, silent){
 }
 function loadLastCompare(){ if(N&&N.lastNetCompare){const s=N.lastNetCompare(); if(s&&!$('ncResult').innerHTML) onNetCompare(s)} }
 
+/* ---------- 처음 안내 · 권한 ---------- */
+const PERMS=[
+  {k:'notif',i:'🔔',n:'알림',w:'업데이트·게임 리포트·휴식 알림을 받아요',req:true},
+  {k:'dnd',i:'🔕',n:'방해금지 제어',w:'게임하는 동안 알림·전화를 막고, 끝나면 되돌려요',req:true},
+  {k:'overlay',i:'🪟',n:'다른 앱 위에 표시',w:'게임 위 HUD와 화면 켜짐 유지에 필요해요',req:true},
+  {k:'usage',i:'📊',n:'사용 정보 접근',w:'홈 화면에서 켠 게임을 자동으로 알아채요',req:false},
+  {k:'install',i:'📦',n:'이 앱에서 설치 허용',w:'새 버전을 앱 안에서 바로 설치해요',req:false}];
+function perms(){ if(!N||!N.getPermissions) return null; try{return JSON.parse(N.getPermissions())}catch(e){return null} }
+function renderOnb(){
+  const p=perms(); if(!p) return;
+  const ok=PERMS.filter(x=>p[x.k]).length;
+  $('onbCount').innerHTML=`<span style="color:${ok===PERMS.length?'var(--green)':'var(--cyan)'}">${ok}/${PERMS.length} 허용됨</span>`;
+  $('onbGo').textContent=ok===PERMS.length?'모두 준비됐어요 — 시작하기':'시작하기';
+  $('onbList').innerHTML=PERMS.map(x=>`<div class="prm"><div class="pi">${x.i}</div>
+    <div class="pt"><b>${x.n}</b><span class="tag" style="background:${x.req?'rgba(34,211,238,.15)':'var(--card2)'};color:${x.req?'var(--cyan)':'var(--sub)'}">${x.req?'권장':'선택'}</span>
+    <div class="sub" style="font-size:15px">${x.w}</div></div>
+    ${p[x.k]?'<span class="ok">✓ 허용됨</span>':`<button onclick="N.requestPermission('${x.k}')">허용하기</button>`}</div>`).join('')+
+    `<div class="sub" style="font-size:14px;text-align:center;margin:6px 4px 12px">권한은 언제든 상태 탭 → 권한 관리에서 다시 볼 수 있어요.<br>HUD·자동 감지는 내 게임 탭에서 켜고 끌 수 있어요.</div>`;
+}
+function openOnb(){ renderOnb(); $('onb').classList.add('on') }
+function closeOnb(){ $('onb').classList.remove('on'); if(N&&N.setOnboarded) N.setOnboarded(); renderPermSub(); renderBoost() }
+function renderPermSub(){ const p=perms(); if(!p||!$('permSub')) return; const ok=PERMS.filter(x=>p[x.k]).length; $('permSub').textContent=`${ok}/${PERMS.length} 허용됨`+(ok<PERMS.length?' — 눌러서 확인':'') }
+
 /* ---------- 그래픽 설정 추천 ---------- */
 function gfxRecommend(sp, sess){
   const ram=sp.ramGb||0, cores=sp.cores||0, ghz=sp.maxGhz||0, hz=sp.maxHz||60;
@@ -811,6 +868,8 @@ function onSessionReport(json){
 function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록하지 않았어요',3000) }
 
 window.onAppResume=()=>{
+  if($('onb').classList.contains('on')) renderOnb();
+  renderPermSub();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
   if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; renderMode() }
@@ -820,6 +879,7 @@ window.onAppResume=()=>{
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{
+  if($('onb').classList.contains('on')){closeOnb();return true}
   if($('gfxSheet').classList.contains('on')){closeGfx();return true}
   if($('modeSheet').classList.contains('on')){closeMode();return true}
   if($('repSheet').classList.contains('on')){closeReport();return true}
@@ -831,6 +891,7 @@ window.onBack=()=>{
 };
 renderBoost();
 (function(){ const v=ver(); if(v){ $('verSub').textContent='현재 '+v.name; if(v.openUpdate) pendingOpen=true } setTimeout(()=>checkUpdate(false),800) })();
+(function(){ const p=perms(); if(p&&!p.onboarded) openOnb(); renderPermSub() })();
 (function(){ if(!N||!N.takePendingReport) return; loadSessions(); const id=N.takePendingReport(); if(id&&id!=='0'){ go('games'); setTimeout(()=>openReport(id),150) } })();
 </script>
 </body>

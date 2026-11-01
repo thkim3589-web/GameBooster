@@ -67,12 +67,6 @@ public class MainActivity extends Activity {
         else registerReceiver(installReceiver, f);
         Updater.schedule(this);
         SessionService.ensureWatching(this);
-        if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
-                && !prefs.getBoolean("askedNotif", false)) {
-            prefs.edit().putBoolean("askedNotif", true).apply();
-            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
-        }
         if (getIntent().getBooleanExtra("fromUpdate", false)) openUpdateOnLoad = true;
     }
 
@@ -111,6 +105,12 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        web.evaluateJavascript("window.onAppResume && onAppResume()", null);
+    }
 
     @Override
     protected void onResume() {
@@ -498,6 +498,57 @@ public class MainActivity extends Activity {
         }
 
         /** 그래픽 추천용 기기 사양 */
+        /** 권한 상태 한 번에 */
+        @JavascriptInterface
+        public String getPermissions() {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("notif", Build.VERSION.SDK_INT < 33
+                        ? ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled()
+                        : checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED);
+                o.put("dnd", dndGranted());
+                o.put("overlay", Hud.canShow(MainActivity.this));
+                o.put("usage", SessionService.hasUsageAccess(MainActivity.this));
+                o.put("install", getPackageManager().canRequestPackageInstalls());
+                o.put("onboarded", prefs.getBoolean("onboarded", false));
+                return o.toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void setOnboarded() { prefs.edit().putBoolean("onboarded", true).apply(); }
+
+        /** 권한 요청 화면 열기 */
+        @JavascriptInterface
+        public void requestPermission(final String which) {
+            runOnUiThread(() -> {
+                try {
+                    Intent i;
+                    switch (which) {
+                        case "notif":
+                            if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("askedNotif", false)) {
+                                prefs.edit().putBoolean("askedNotif", true).apply();
+                                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+                                return;
+                            }
+                            // 한 번 거절했으면 시스템 창이 다시 안 뜨므로 앱 알림 설정으로
+                            i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                            break;
+                        case "dnd": i = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS); break;
+                        case "overlay": i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName())); break;
+                        case "usage": i = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, android.net.Uri.parse("package:" + getPackageName())); break;
+                        case "install": i = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:" + getPackageName())); break;
+                        default: i = new Intent(Settings.ACTION_SETTINGS);
+                    }
+                    try { startActivity(i); }
+                    catch (Exception e) {  // 일부 기기는 package: 주소를 못 받음
+                        if ("usage".equals(which)) startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+                        else startActivity(new Intent(Settings.ACTION_SETTINGS));
+                    }
+                } catch (Exception ignored) {}
+            });
+        }
+
         @JavascriptInterface
         public String getSpecs() {
             try {
