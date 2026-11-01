@@ -457,6 +457,28 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void compareNetworks() {
+            new Thread(() -> {
+                JSONObject r = NetCompare.run(MainActivity.this);
+                prefs.edit().putString("lastNetCompare", r.toString()).apply();
+                callJs("onNetCompare", r.toString());
+            }).start();
+        }
+
+        @JavascriptInterface
+        public String lastNetCompare() { return prefs.getString("lastNetCompare", ""); }
+
+        @JavascriptInterface
+        public void openInternetPanel() {
+            runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= 29) startActivity(new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY));
+                    else startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+            });
+        }
+
+        @JavascriptInterface
         public String getSessions() { return prefs.getString("sessions", "[]"); }
 
         @JavascriptInterface

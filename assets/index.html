@@ -104,6 +104,21 @@ nav button.on{color:var(--cyan)}
 .overlay.on{display:flex}
 .overlay .big{font-size:56px}
 .overlay .msg{font-size:22px;font-weight:800;margin-top:10px}
+/* 네트워크 비교 */
+.ncv{text-align:center;font-weight:800;font-size:19px;margin:14px 0 4px}
+.nccols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.ncc{background:var(--bg);border-radius:14px;padding:12px;border:2px solid transparent}
+.ncc.win{border-color:var(--green)}
+.ncc .hd2{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:15px;font-weight:700;color:var(--sub)}
+.ncc .hd2 span.lb{white-space:nowrap}
+.ncc .ms{font-size:30px;font-weight:800;margin:2px 0}
+.ncc .ms small{font-size:15px;color:var(--sub);font-weight:600}
+.bars{display:flex;align-items:flex-end;gap:3px;height:44px;margin:6px 0}
+.bars i{flex:1;border-radius:3px;min-height:4px}
+.ncc .meta{font-size:14px;color:var(--sub);line-height:1.6}
+.ncspin{display:flex;justify-content:center;padding:18px 0 6px}
+.ncspin div{width:46px;height:46px;border-radius:50%;border:5px solid var(--card2);border-top-color:var(--cyan);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* 게임 기록 */
 .sess{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
 .sess .l{flex:1;min-width:0}
@@ -209,6 +224,12 @@ nav button.on{color:var(--cyan)}
   <!-- 탭3 상태 -->
   <section class="tab" id="t-status">
     <div class="stats" id="stats"></div>
+    <div class="card" style="margin-top:14px" id="ncCard">
+      <h3 style="margin-bottom:4px">와이파이 vs 4G/5G</h3>
+      <div class="sub">두 연결을 동시에 10번씩 재서 지금 게임하기 더 좋은 쪽을 알려줘요</div>
+      <div id="ncResult"></div>
+      <button class="btn pri" style="margin-top:12px" id="ncBtn" onclick="doCompare()">비교 측정</button>
+    </div>
     <div class="card" style="margin-top:14px">
       <div class="row">
         <div><div style="font-weight:700">네트워크 지연(핑)</div><div class="sub" id="pingSub">측정 전</div></div>
@@ -290,7 +311,7 @@ function go(t){
   document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   clearInterval(statTimer);
-  if(t==='status'){renderStatus();statTimer=setInterval(renderStatus,3000)}
+  if(t==='status'){renderStatus();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
   if(t==='boost'){renderBoost()}
   if(t==='games'){loadGames();loadSessions()}
   window.scrollTo(0,0);
@@ -322,13 +343,13 @@ function renderChecks(s){
   items.push({ic:'🌡️',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
   items.push({ic:'⚙️',t:'절전 모드 '+(s.powerSave?'켜짐 — 성능이 제한돼요':'꺼짐'),st:s.powerSave?['warn','끄기 권장']:['ok','좋음'],go:s.powerSave?'battery':null});
   items.push({ic:'📶',t:'네트워크 '+s.net+(s.net==='모바일 데이터'?' — 와이파이가 더 안정적일 수 있어요':''),
-    st:s.net==='연결 없음'?['bad','끊김']:s.net==='와이파이'?['ok','좋음']:['warn','확인'],go:s.net!=='와이파이'?'wifi':null});
+    st:s.net==='연결 없음'?['bad','끊김']:s.net==='와이파이'?['ok','좋음']:['warn','확인'],go:s.net==='연결 없음'?'wifi':'compare'});
   const freePct=Math.round(s.diskFree/s.diskTotal*100);
   items.push({ic:'💾',t:'저장공간 여유 '+gb(s.diskFree)+'GB ('+freePct+'%)',st:freePct>=15?['ok','양호']:freePct>=8?['warn','부족']:['bad','정리 필요'],go:freePct<15?'storage':null});
   if(!s.dndGranted) items.push({ic:'🔕',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
-  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic">${i.ic}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">설정</button>`:''}</div>`).join('');
+  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic">${i.ic}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
 }
-function openSet(w){ if(!N) return; if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
+function openSet(w){ if(!N) return; if(w==='compare'){go('status');setTimeout(()=>{$('ncCard').scrollIntoView({behavior:'smooth'});doCompare()},200);return} if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
 
 function doBoost(){
   if(!N){toast('휴대폰 앱에서만 동작해요');return}
@@ -499,6 +520,52 @@ function onUpdateError(msg){
   resetUpSheet(); toast(msg,4500);
   $('upProgWrap').style.display='block'; $('upStage').textContent=msg;
 }
+
+/* ---------- 와이파이 vs 4G/5G ---------- */
+function doCompare(){
+  if(!N||!N.compareNetworks){toast('휴대폰 앱에서만 동작해요');return}
+  $('ncBtn').disabled=true; $('ncBtn').textContent='측정 중…';
+  $('ncResult').innerHTML='<div class="ncspin"><div></div></div><div class="sub" style="text-align:center">두 연결을 번갈아 재는 중이에요 (10~20초)</div>';
+  N.compareNetworks();
+}
+function ncColor(ms){return ms<0?'var(--sub)':ms<=60?'var(--green)':ms<=120?'var(--orange)':'var(--red)'}
+function ncCol(kind,s,win,current){
+  const icon=kind==='wifi'?'📶 와이파이':'📱 4G/5G';
+  const now=current===kind?' <span class="badge ok" style="font-size:12px;padding:1px 7px">사용 중</span>':'';
+  if(!s) return `<div class="ncc"><div class="hd2">${icon}</div><div class="ms" style="font-size:20px;color:var(--sub)">연결 없음</div><div class="meta">${kind==='wifi'?'와이파이가 꺼져 있거나 연결되지 않았어요':'모바일 데이터가 꺼져 있어요'}</div></div>`;
+  const smp=s.samples, mx=Math.max(60,...smp.filter(x=>x>=0));
+  const bars=smp.map(x=>x<0?'<i style="height:6px;background:var(--red)"></i>':`<i style="height:${Math.max(8,x/mx*100)}%;background:${ncColor(x)}"></i>`).join('');
+  return `<div class="ncc ${win?'win':''}"><div class="hd2"><span class="lb">${icon}</span>${now}</div>
+    <div class="ms" style="color:${ncColor(s.avg)}">${s.avg<0?'✕':s.avg+'<small> ms</small>'}</div>
+    <div class="bars">${bars}</div>
+    <div class="meta">흔들림 ${s.jitter<0?'-':s.jitter+'ms'}<br>끊김 ${s.lost}/10</div></div>`;
+}
+function onNetCompare(json, silent){
+  const r=JSON.parse(json);
+  $('ncBtn').disabled=false; $('ncBtn').textContent='다시 측정';
+  if(r.error){$('ncResult').innerHTML=`<div class="ncv" style="color:var(--red)">${esc(r.error)}</div>`;return}
+  const name={wifi:'와이파이',cell:'4G/5G'};
+  let verdict, sub='';
+  const one=!(r.hasWifi&&r.hasCell), only=r.hasWifi?r.wifi:r.cell, onlyName=r.hasWifi?'와이파이':'4G/5G';
+  if(one && only){
+    const q=only.ok===0?['var(--red)','응답 없음']:(only.avg<=60&&only.lost===0&&only.jitter<=30)?['var(--green)','게임하기 좋아요']:(only.avg<=120&&only.lost<=1)?['var(--orange)','보통이에요']:['var(--red)','렉이 생길 수 있어요'];
+    verdict=`<span style="color:${q[0]}">${onlyName} 연결 — ${q[1]}</span>`;
+  }
+  else if(r.best==='same') verdict='<span style="color:var(--cyan)">둘 다 비슷해요 — 아무거나 OK</span>';
+  else if(r.best==='none') verdict='<span style="color:var(--red)">두 연결 모두 응답이 없어요</span>';
+  else {
+    verdict=`<span style="color:var(--green)">지금은 ${name[r.best]}가 게임에 더 좋아요</span>`;
+    if(r.hasWifi&&r.hasCell&&r.current!==r.best)
+      sub=`<button class="btn" style="margin-top:10px" onclick="N.openInternetPanel()">${r.best==='cell'?'와이파이 끄러 가기':'와이파이로 바꾸러 가기'}</button>
+           <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">앱이 연결을 직접 바꿀 수는 없어서, 설정에서 바꿔주세요</div>`;
+  }
+  if(!(r.hasWifi&&r.hasCell)) sub+=`<div class="sub" style="text-align:center;margin-top:6px;font-size:14px">${!r.hasWifi?'와이파이':'모바일 데이터'}를 켜면 두 연결을 비교할 수 있어요</div>`;
+  const d=new Date(r.time||Date.now());
+  $('ncResult').innerHTML=`<div class="ncv">${verdict}</div>
+    <div class="sub" style="text-align:center;font-size:14px">${r.wifi&&r.wifi.avg>=0?'와이파이 '+r.wifi.avg+'ms':''}${r.wifi&&r.cell?' · ':''}${r.cell&&r.cell.avg>=0?'4G/5G '+r.cell.avg+'ms':''} · 같은 서버로 10회씩 · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 측정</div>
+    <div class="nccols">${ncCol('wifi',r.wifi,r.best==='wifi',r.current)}${ncCol('cell',r.cell,r.best==='cell',r.current)}</div>${sub}`;
+}
+function loadLastCompare(){ if(N&&N.lastNetCompare){const s=N.lastNetCompare(); if(s&&!$('ncResult').innerHTML) onNetCompare(s)} }
 
 /* ---------- 게임 기록 ---------- */
 let sessions=[];
