@@ -115,6 +115,17 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (web != null) web.evaluateJavascript("window.onAppResume && onAppResume()", null);
+        // 게임하다 돌아오면 기록을 끝내고 리포트 표시
+        if (SessionService.isRecording(this)) {
+            new Thread(() -> {
+                JSONObject rep = SessionService.finish(MainActivity.this);
+                try { stopService(new Intent(MainActivity.this, SessionService.class)); } catch (Exception ignored) {}
+                if (rep != null) {
+                    prefs.edit().remove("pendingReport").apply();
+                    callJs("onSessionReport", rep.toString());
+                } else callJs("onSessionShort", "");
+            }).start();
+        }
     }
 
     @Override
@@ -422,17 +433,54 @@ public class MainActivity extends Activity {
         public void launchGame(final String pkg, final boolean boostFirst) {
             new Thread(() -> {
                 try {
-                    String res = boostFirst ? doBoost(pkg).toString() : "{}";
+                    long memNow = mem()[1];
+                    JSONObject br = boostFirst ? doBoost(pkg) : new JSONObject();
                     Intent li = getPackageManager().getLaunchIntentForPackage(pkg);
                     if (li == null) { callJs("onLaunchFail", pkg); return; }
                     li.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    callJs("onLaunching", res);
+                    boolean rec = prefs.getBoolean("record", true);
+                    if (rec) {
+                        String label = pkg;
+                        try { label = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString(); }
+                        catch (Exception ignored) {}
+                        SessionService.begin(MainActivity.this, pkg, label, boostFirst,
+                                br.optLong("before", memNow), br.optLong("after", memNow));
+                    }
+                    br.put("recording", rec);
+                    callJs("onLaunching", br.toString());
                     Thread.sleep(600);
                     runOnUiThread(() -> startActivity(li));
                 } catch (Exception e) {
                     callJs("onLaunchFail", pkg);
                 }
             }).start();
+        }
+
+        @JavascriptInterface
+        public String getSessions() { return prefs.getString("sessions", "[]"); }
+
+        @JavascriptInterface
+        public void deleteSession(String id) {
+            try {
+                JSONArray all = new JSONArray(prefs.getString("sessions", "[]")), out = new JSONArray();
+                for (int i = 0; i < all.length(); i++)
+                    if (!String.valueOf(all.getJSONObject(i).optLong("id")).equals(id)) out.put(all.get(i));
+                prefs.edit().putString("sessions", out.toString()).apply();
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public boolean getRecord() { return prefs.getBoolean("record", true); }
+
+        @JavascriptInterface
+        public void setRecord(boolean on) { prefs.edit().putBoolean("record", on).apply(); }
+
+        /** 알림에서 끝낸 기록처럼 아직 안 본 리포트의 id (없으면 0) */
+        @JavascriptInterface
+        public String takePendingReport() {
+            long id = prefs.getLong("pendingReport", 0);
+            prefs.edit().remove("pendingReport").apply();
+            return String.valueOf(id);
         }
 
         @JavascriptInterface

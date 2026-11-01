@@ -104,6 +104,21 @@ nav button.on{color:var(--cyan)}
 .overlay.on{display:flex}
 .overlay .big{font-size:56px}
 .overlay .msg{font-size:22px;font-weight:800;margin-top:10px}
+/* 게임 기록 */
+.sess{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.sess .l{flex:1;min-width:0}
+.sess .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{font-size:14px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--card2);color:var(--sub)}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.rbox{background:var(--bg);border-radius:14px;padding:12px}
+.rbox .k{font-size:14px;color:var(--sub)}
+.rbox .v{font-size:24px;font-weight:800}
+.rbox .v small{font-size:14px;color:var(--sub);font-weight:600}
+.cmp{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:16px;line-height:1.7}
+.advice{background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.35);border-radius:14px;padding:12px 14px;margin:10px 0 6px;font-size:16px;line-height:1.7}
+.legend{display:flex;gap:16px;font-size:14px;color:var(--sub);margin-top:4px}
+.legend i{display:inline-block;width:12px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
 /* 업데이트 */
 .upBanner{display:none;margin:0 16px 10px;padding:14px 16px;border-radius:18px;
   background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(34,211,238,.16));border:1px solid rgba(250,204,21,.45)}
@@ -180,6 +195,15 @@ nav button.on{color:var(--cyan)}
       등록된 게임이 없어요.<br>아래 버튼으로 게임을 추가하세요.
     </div>
     <button class="btn pri" style="margin-top:16px" onclick="openPicker()">＋ 게임 추가</button>
+
+    <div class="card" style="margin-top:18px">
+      <div class="row">
+        <div><div style="font-weight:700">게임 기록하기</div><div class="sub">게임 중 온도·배터리를 기록해 끝나면 리포트로 보여줘요</div></div>
+        <label class="sw"><input type="checkbox" id="recSw" onchange="N&&N.setRecord(this.checked)"><span></span></label>
+      </div>
+    </div>
+    <h3 style="margin:18px 2px 10px;font-size:19px">최근 게임 기록</h3>
+    <div id="sessList"></div>
   </section>
 
   <!-- 탭3 상태 -->
@@ -237,6 +261,17 @@ nav button.on{color:var(--cyan)}
   </div>
 </div>
 
+<div class="modal" id="repSheet" onclick="if(event.target===this)closeReport()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px" id="repTitle">게임 리포트</b><div class="sub" id="repSub"></div></div>
+    <div class="bd" id="repBody"></div>
+    <div class="ft" style="display:flex;gap:10px">
+      <button class="btn" style="flex:1" id="repDel">삭제</button>
+      <button class="btn pri" style="flex:2" onclick="closeReport()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay"><div class="big">🚀</div><div class="msg" id="ovMsg">부스트 중…</div><div class="sub" id="ovSub" style="margin-top:8px"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -257,7 +292,7 @@ function go(t){
   clearInterval(statTimer);
   if(t==='status'){renderStatus();statTimer=setInterval(renderStatus,3000)}
   if(t==='boost'){renderBoost()}
-  if(t==='games'){loadGames()}
+  if(t==='games'){loadGames();loadSessions()}
   window.scrollTo(0,0);
 }
 
@@ -343,7 +378,8 @@ function playGame(pkg,label){
 }
 function onLaunching(json){
   const r=JSON.parse(json||'{}'); const f=r.freed?mb(r.freed):0;
-  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 앱 ${r.count||0}개 정리`;
+  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 앱 ${r.count||0}개 정리`+(r.recording?'\n기록 시작 — 끝나고 돌아오면 리포트가 나와요':'');
+  $('ovSub').style.whiteSpace='pre-line';
   setTimeout(()=>$('overlay').classList.remove('on'),1500);
 }
 function onLaunchFail(){ $('overlay').classList.remove('on'); toast('게임을 실행할 수 없어요') }
@@ -464,12 +500,100 @@ function onUpdateError(msg){
   $('upProgWrap').style.display='block'; $('upStage').textContent=msg;
 }
 
+/* ---------- 게임 기록 ---------- */
+let sessions=[];
+function loadSessions(){
+  if(!N||!N.getSessions){sessions=[];}else{try{sessions=JSON.parse(N.getSessions())}catch(e){sessions=[]}}
+  if(N&&N.getRecord) $('recSw').checked=N.getRecord();
+  renderSessions();
+}
+function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}시간 ${m}분`:m?`${m}분`:`${s}초`}
+function fmtDate(ms){const d=new Date(ms),n=new Date();const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return (d.toDateString()===n.toDateString()?'오늘':(d.getMonth()+1)+'/'+d.getDate())+' '+hm}
+function tColor(t){return t>=42?'var(--red)':t>=38?'var(--orange)':'var(--green)'}
+function renderSessions(){
+  if(!sessions.length){$('sessList').innerHTML='<div class="empty" style="padding:20px 10px">아직 기록이 없어요.<br>위의 게임을 눌러 실행하면 자동으로 기록돼요.</div>';return}
+  $('sessList').innerHTML=sessions.map(s=>`<div class="sess" onclick="openReport(${s.id})">
+    <div class="l"><div class="nm">${esc(s.label)}</div>
+      <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
+      <div class="chips"><span class="chip">🔋 ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">🌡 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}</div>
+    </div><div style="font-size:22px;color:var(--sub)">›</div></div>`).join('');
+}
+function chartSvg(s){
+  const W=340,H=170,pl=34,pr=34,pt=12,pb=26,iw=W-pl-pr,ih=H-pt-pb;
+  const t=s.t, tp=s.temp, bt=s.bat, T=Math.max(1,t[t.length-1]);
+  let tmin=Math.floor(Math.min(...tp)-1), tmax=Math.ceil(Math.max(...tp,s.tMax)+1); if(tmax-tmin<4) tmax=tmin+4;
+  let bmin=Math.max(0,Math.floor((Math.min(...bt)-3)/5)*5), bmax=Math.min(100,Math.ceil((Math.max(...bt)+3)/5)*5); if(bmax-bmin<10) bmin=Math.max(0,bmax-10);
+  const X=v=>pl+v/T*iw, YT=v=>pt+(1-(v-tmin)/(tmax-tmin))*ih, YB=v=>pt+(1-(v-bmin)/(bmax-bmin))*ih;
+  const line=(arr,Y)=>arr.map((v,i)=>(i?'L':'M')+X(t[i]).toFixed(1)+','+Y(v).toFixed(1)).join('');
+  let hot=''; if(tmax>42){const y=YT(Math.min(tmax,Math.max(42,tmin)));hot=`<rect x="${pl}" y="${pt}" width="${iw}" height="${(y-pt).toFixed(1)}" fill="rgba(248,113,113,.10)"/><text x="${pl+4}" y="${pt+13}" font-size="11" fill="#F87171">42℃ 이상 과열</text>`}
+  let grid='';for(let k=0;k<=3;k++){const y=pt+ih*k/3, tv=tmax-(tmax-tmin)*k/3, bv=bmax-(bmax-bmin)*k/3;
+    grid+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#24314F"/><text x="${pl-5}" y="${y+4}" font-size="11" fill="#FB923C" text-anchor="end">${tv.toFixed(0)}°</text><text x="${W-pr+5}" y="${y+4}" font-size="11" fill="#22D3EE">${bv.toFixed(0)}%</text>`}
+  const mm=Math.round(T/60);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${hot}${grid}
+    <path d="${line(bt,YB)}" fill="none" stroke="#22D3EE" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="${line(tp,YT)}" fill="none" stroke="#FB923C" stroke-width="2.5" stroke-linejoin="round"/>
+    <text x="${pl}" y="${H-6}" font-size="11" fill="#94A3B8">시작</text><text x="${W-pr}" y="${H-6}" font-size="11" fill="#94A3B8" text-anchor="end">${mm?mm+'분':T+'초'}</text></svg>
+    <div class="legend"><span><i style="background:#FB923C"></i>배터리 온도</span><span><i style="background:#22D3EE"></i>배터리 잔량</span></div>`;
+}
+function compareText(s){
+  const prev=sessions.find(x=>x.pkg===s.pkg&&x.id<s.id); if(!prev) return '';
+  const out=[];
+  const dT=Math.round((s.tMax-prev.tMax)*10)/10;
+  if(Math.abs(dT)>=0.5) out.push(`최고 온도 ${Math.abs(dT)}℃ ${dT<0?'<b style="color:var(--green)">낮음</b>':'<b style="color:var(--orange)">높음</b>'}`);
+  else out.push('최고 온도 비슷함');
+  if(s.perHour>=0&&prev.perHour>=0){const d=Math.round((s.perHour-prev.perHour)*10)/10;
+    if(Math.abs(d)>=1) out.push(`배터리 소모 시간당 ${Math.abs(d)}% ${d<0?'<b style="color:var(--green)">적음</b>':'<b style="color:var(--orange)">많음</b>'}`);
+    else out.push('배터리 소모 비슷함');}
+  const dh=Math.round((s.hotMin-prev.hotMin)*10)/10;
+  if(Math.abs(dh)>=1) out.push(`과열 시간 ${Math.abs(dh)}분 ${dh<0?'<b style="color:var(--green)">줄어듦</b>':'<b style="color:var(--orange)">늘어남</b>'}`);
+  const tag=(prev.boosted?'부스트 O':'부스트 X')+' → '+(s.boosted?'부스트 O':'부스트 X');
+  return `<div class="cmp"><b>지난 판(${fmtDate(prev.start)})과 비교</b><div class="sub" style="font-size:14px">${tag}</div>${out.join('<br>')}</div>`;
+}
+function adviceText(s){
+  const a=[];
+  if(s.thermalMax>=3) a.push('🔥 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요.');
+  if(s.charged&&s.tMax>=40) a.push('🔌 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
+  if(s.tMax>=42&&!s.charged) a.push('🧊 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
+  if(s.perHour>=25) a.push('🔋 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
+  if(!a.length) a.push('👍 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
+  return `<div class="advice">${a.join('<br>')}</div>`;
+}
+function openReport(id){
+  const s=sessions.find(x=>x.id==id); if(!s) return;
+  $('repTitle').textContent=s.label+' 리포트';
+  $('repSub').textContent=fmtDate(s.start)+' · '+fmtDur(s.duration)+(s.boosted?' · 부스트 후 실행':'');
+  const th=['정상','약간 따뜻','따뜻함','뜨거움','매우 뜨거움','위험','차단'][s.thermalMax]||'정상';
+  $('repBody').innerHTML=`
+    <div style="margin-top:10px">${chartSvg(s)}</div>
+    <div class="rgrid">
+      <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>충전 중</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
+      <div class="rbox"><div class="k">시간당 소모</div><div class="v">${s.perHour>=0?s.perHour+'<small>%/h</small>':'<small>5분 이상 필요</small>'}</div></div>
+      <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
+      <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
+      <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
+      <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>
+    </div>
+    ${compareText(s)}${adviceText(s)}`;
+  $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); toast('기록을 삭제했어요') };
+  $('repSheet').classList.add('on');
+}
+function closeReport(){$('repSheet').classList.remove('on')}
+function onSessionReport(json){
+  loadSessions();
+  const s=JSON.parse(json);
+  go('games'); setTimeout(()=>openReport(s.id),150);
+}
+function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록하지 않았어요',3000) }
+
 window.onAppResume=()=>{
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
+  if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
   if(upWaitPerm){ upWaitPerm=false; if($('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{
+  if($('repSheet').classList.contains('on')){closeReport();return true}
   if($('upSheet').classList.contains('on')){closeUpdate();return true}
   if($('picker').classList.contains('on')){closePicker();return true}
   if(editing){toggleEdit();return true}
@@ -478,6 +602,7 @@ window.onBack=()=>{
 };
 renderBoost();
 (function(){ const v=ver(); if(v){ $('verSub').textContent='현재 '+v.name; if(v.openUpdate) pendingOpen=true } setTimeout(()=>checkUpdate(false),800) })();
+(function(){ if(!N||!N.takePendingReport) return; loadSessions(); const id=N.takePendingReport(); if(id&&id!=='0'){ go('games'); setTimeout(()=>openReport(id),150) } })();
 </script>
 </body>
 </html>
