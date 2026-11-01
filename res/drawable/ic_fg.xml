@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 게임패드 + 번개 아이콘 (108dp 캔버스, 중앙 66dp가 안전영역) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 게임패드 몸체 -->
+    <path android:fillColor="#22D3EE"
+        android:pathData="M36,40 L72,40 C82,40 88,48 89,58 L91,70 C92,77 86,82 80,78 L71,70 L37,70 L28,78 C22,82 16,77 17,70 L19,58 C20,48 26,40 36,40 Z" />
+    <!-- 십자키 -->
+    <path android:fillColor="#0B1220"
+        android:pathData="M31,52 L35,52 L35,48 L39,48 L39,52 L43,52 L43,56 L39,56 L39,60 L35,60 L35,56 L31,56 Z" />
+    <!-- 버튼 -->
+    <path android:fillColor="#0B1220"
+        android:pathData="M74,50 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 M80,57 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <!-- 번개 -->
+    <path android:fillColor="#FACC15"
+        android:strokeColor="#0B1220" android:strokeWidth="2"
+        android:pathData="M58,26 L44,58 L54,58 L48,84 L66,48 L56,48 L62,26 Z" />
+</vector>

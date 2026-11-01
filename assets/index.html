@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>게임부스터</title>
+<style>
+:root{
+  --bg:#0B1220;--card:#131C2E;--card2:#1A2540;--line:#24314F;
+  --text:#F1F5F9;--sub:#94A3B8;--cyan:#22D3EE;--yellow:#FACC15;
+  --green:#4ADE80;--orange:#FB923C;--red:#F87171;--violet:#A78BFA;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;font-size:18px;line-height:1.45}
+header{padding:18px 18px 6px;display:flex;align-items:center;gap:10px}
+header h1{font-size:24px;margin:0;font-weight:800;letter-spacing:-.5px}
+header h1 b{color:var(--yellow)}
+main{padding:6px 16px 110px}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:19px}
+.sub{color:var(--sub);font-size:16px}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:18px;font-weight:700;width:100%}
+.btn.pri{background:var(--cyan);color:#06202A;border:0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row+.row{margin-top:12px}
+
+/* 부스트 링 */
+.ringwrap{display:flex;flex-direction:column;align-items:center;padding:8px 0 4px}
+.ring{position:relative;width:250px;height:250px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.boostBtn{width:176px;height:176px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#3EE7FF,#0891B2);color:#04151B;
+  font-size:30px;font-weight:900;box-shadow:0 0 40px rgba(34,211,238,.35);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .15s}
+.boostBtn:active{transform:scale(.95)}
+.boostBtn small{font-size:16px;font-weight:700;opacity:.8;margin-top:2px}
+.boostBtn.busy{animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 70px rgba(250,204,21,.6)}}
+.ramtxt{margin-top:12px;font-size:19px;font-weight:700}
+.result{text-align:center;font-size:18px;min-height:28px;margin-top:6px}
+.result b{color:var(--green)}
+
+/* 스위치 */
+.sw{position:relative;width:58px;height:34px;flex:none}
+.sw input{display:none}
+.sw span{position:absolute;inset:0;background:#334155;border-radius:34px;transition:.2s}
+.sw span:before{content:"";position:absolute;width:26px;height:26px;left:4px;top:4px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--cyan)}
+.sw input:checked+span:before{transform:translateX(24px)}
+
+.tip{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.tip:first-of-type{border-top:0}
+.tip .ic{font-size:24px;width:32px;text-align:center}
+.tip .t{flex:1}
+.tip .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:16px;font-weight:700}
+.badge{display:inline-block;font-size:15px;font-weight:800;padding:3px 10px;border-radius:20px}
+.ok{background:rgba(74,222,128,.15);color:var(--green)}
+.warn{background:rgba(251,146,60,.15);color:var(--orange)}
+.bad{background:rgba(248,113,113,.15);color:var(--red)}
+
+/* 게임 */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.game{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 6px 12px;text-align:center;position:relative}
+.game img{width:60px;height:60px;border-radius:14px}
+.game .nm{font-size:15px;margin-top:6px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.game .del{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;display:none}
+.editing .game .del{display:block}
+.empty{text-align:center;padding:34px 10px;color:var(--sub)}
+
+/* 상태 */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.stat .k{color:var(--sub);font-size:15px}
+.stat .v{font-size:28px;font-weight:800;margin-top:2px}
+.stat .v small{font-size:16px;font-weight:600;color:var(--sub)}
+.bar{height:10px;background:#0B1220;border-radius:10px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:10px;background:var(--cyan);transition:width .4s}
+.stat.wide{grid-column:span 2}
+
+/* 하단 탭 */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0E1626;border-top:1px solid var(--line);padding:6px 6px 10px}
+nav button{flex:1;background:none;padding:8px 0;color:var(--sub);font-size:16px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .i{font-size:26px;line-height:1}
+nav button.on{color:var(--cyan)}
+
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+.modal.on{display:flex}
+.sheet{background:var(--card);width:100%;max-height:85vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column}
+.sheet .hd{padding:18px;border-bottom:1px solid var(--line)}
+.sheet .bd{overflow:auto;padding:4px 18px}
+.sheet .ft{padding:14px 18px;border-top:1px solid var(--line)}
+.appRow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.appRow img{width:44px;height:44px;border-radius:10px}
+.appRow .nm{flex:1;font-size:17px}
+.appRow input{width:26px;height:26px;accent-color:var(--cyan)}
+.search{width:100%;margin-top:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:17px}
+
+.overlay{position:fixed;inset:0;background:rgba(11,18,32,.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:20px}
+.overlay.on{display:flex}
+.overlay .big{font-size:56px}
+.overlay .msg{font-size:22px;font-weight:800;margin-top:10px}
+/* 업데이트 */
+.upBanner{display:none;margin:0 16px 10px;padding:14px 16px;border-radius:18px;
+  background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(34,211,238,.16));border:1px solid rgba(250,204,21,.45)}
+.upBanner.on{display:block}
+.upBanner .ttl{font-weight:800;font-size:18px}
+.upBanner .btns{display:flex;gap:8px;margin-top:10px}
+.upBanner .btns button{flex:1;padding:11px 0;border-radius:12px;font-weight:800;font-size:16px}
+.notes{white-space:pre-wrap;font-size:16px;line-height:1.6;background:var(--bg);border-radius:12px;padding:12px 14px;margin:6px 0 4px}
+.prog{height:14px;background:var(--bg);border-radius:14px;overflow:hidden;margin-top:12px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--yellow));transition:width .2s}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#1E293B;border:1px solid var(--line);padding:12px 18px;border-radius:14px;font-size:16px;display:none;z-index:40;max-width:90%}
+</style>
+</head>
+<body>
+<header>
+  <svg width="36" height="36" viewBox="16 22 76 64"><path fill="#22D3EE" d="M36,40 L72,40 C82,40 88,48 89,58 L91,70 C92,77 86,82 80,78 L71,70 L37,70 L28,78 C22,82 16,77 17,70 L19,58 C20,48 26,40 36,40 Z"/><path fill="#FACC15" stroke="#0B1220" stroke-width="2" d="M58,26 L44,58 L54,58 L48,84 L66,48 L56,48 L62,26 Z"/></svg>
+  <h1>게임<b>부스터</b></h1>
+</header>
+
+<div class="upBanner" id="upBanner">
+  <div class="ttl">🚀 새 버전이 나왔어요</div>
+  <div class="sub" id="upBannerSub"></div>
+  <div class="btns">
+    <button style="background:var(--card2);border:1px solid var(--line)" onclick="hideBanner()">나중에</button>
+    <button style="background:var(--yellow);color:#1A1400" onclick="openUpdate()">업데이트 보기</button>
+  </div>
+</div>
+
+<main>
+  <!-- 탭1 부스트 -->
+  <section class="tab on" id="t-boost">
+    <div class="card">
+      <div class="ringwrap">
+        <div class="ring">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#1E293B" stroke-width="10"/>
+            <circle id="ringArc" cx="60" cy="60" r="54" fill="none" stroke="#22D3EE" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
+          </svg>
+          <div class="center">
+            <button class="boostBtn" id="boostBtn" onclick="doBoost()">부스트<small id="boostSub">탭하여 최적화</small></button>
+          </div>
+        </div>
+        <div class="ramtxt" id="ramTxt">메모리 확인 중…</div>
+        <div class="result" id="result"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div><div style="font-weight:700">방해금지 모드</div><div class="sub" id="dndSub">게임 중 알림·전화 차단</div></div>
+        <label class="sw"><input type="checkbox" id="dndSw" onchange="toggleDnd(this)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">부스트할 때 자동으로 켜기</div><div class="sub">부스트·게임 실행 시 방해금지 ON</div></div>
+        <label class="sw"><input type="checkbox" id="autoDndSw" onchange="toggleAutoDnd(this)"><span></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>게임 전 점검</h3>
+      <div id="checks"></div>
+    </div>
+  </section>
+
+  <!-- 탭2 내 게임 -->
+  <section class="tab" id="t-games">
+    <div class="row" style="margin-bottom:12px">
+      <div class="sub">게임을 누르면 <b style="color:var(--cyan)">부스트 후 실행</b>돼요</div>
+      <button class="go btn" style="width:auto;padding:8px 14px;font-size:16px" id="editBtn" onclick="toggleEdit()">편집</button>
+    </div>
+    <div class="grid" id="gameGrid"></div>
+    <div id="gameEmpty" class="empty" style="display:none">
+      <div style="font-size:48px">🎮</div>
+      등록된 게임이 없어요.<br>아래 버튼으로 게임을 추가하세요.
+    </div>
+    <button class="btn pri" style="margin-top:16px" onclick="openPicker()">＋ 게임 추가</button>
+  </section>
+
+  <!-- 탭3 상태 -->
+  <section class="tab" id="t-status">
+    <div class="stats" id="stats"></div>
+    <div class="card" style="margin-top:14px">
+      <div class="row">
+        <div><div style="font-weight:700">네트워크 지연(핑)</div><div class="sub" id="pingSub">측정 전</div></div>
+        <div style="font-size:30px;font-weight:800" id="pingVal">–</div>
+      </div>
+      <button class="btn" style="margin-top:12px" id="pingBtn" onclick="doPing()">핑 측정</button>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div><div style="font-weight:700">앱 버전</div><div class="sub" id="verSub">확인 중…</div></div>
+        <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" id="verBtn" onclick="manualCheck()">업데이트 확인</button>
+      </div>
+    </div>
+    <div class="sub" style="text-align:center" id="devInfo"></div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-t="boost" onclick="go('boost')"><span class="i">⚡</span>부스트</button>
+  <button data-t="games" onclick="go('games')"><span class="i">🎮</span>내 게임</button>
+  <button data-t="status" onclick="go('status')"><span class="i">📊</span>상태</button>
+</nav>
+
+<div class="modal" id="picker" onclick="if(event.target===this)closePicker()">
+  <div class="sheet">
+    <div class="hd">
+      <div class="row"><b style="font-size:20px">게임 선택</b><span class="sub" id="pickCnt"></span></div>
+      <input class="search" id="pickSearch" placeholder="앱 이름 검색" oninput="renderPicker()">
+    </div>
+    <div class="bd" id="pickList"><div class="empty">앱 목록 불러오는 중…</div></div>
+    <div class="ft"><button class="btn pri" onclick="closePicker()">완료</button></div>
+  </div>
+</div>
+
+<div class="modal" id="upSheet" onclick="if(event.target===this&&!upBusy)closeUpdate()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px" id="upTitle">새 버전</b><div class="sub" id="upVer"></div></div>
+    <div class="bd">
+      <div style="font-weight:700;margin-top:10px">바뀐 내용</div>
+      <div class="notes" id="upNotes"></div>
+      <div id="upProgWrap" style="display:none;padding-bottom:6px">
+        <div class="prog"><i id="upProg"></i></div>
+        <div class="sub" style="text-align:center;margin-top:8px" id="upStage">다운로드 중…</div>
+      </div>
+    </div>
+    <div class="ft" style="display:flex;gap:10px">
+      <button class="btn" style="flex:1" id="upLater" onclick="closeUpdate()">나중에</button>
+      <button class="btn pri" style="flex:2" id="upGo" onclick="startUpdate()">지금 설치</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="big">🚀</div><div class="msg" id="ovMsg">부스트 중…</div><div class="sub" id="ovSub" style="margin-top:8px"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const N = window.Native || null;
+const $ = id => document.getElementById(id);
+let cur = 'boost', statTimer = null, allApps = [], editing = false, lastPing = null;
+
+function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms||2500)}
+function gb(b){return (b/1073741824).toFixed(1)}
+function mb(b){return Math.round(b/1048576)}
+function status(){ if(!N) return null; try{return JSON.parse(N.getStatus())}catch(e){return null} }
+
+function go(t){
+  cur=t;
+  document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  clearInterval(statTimer);
+  if(t==='status'){renderStatus();statTimer=setInterval(renderStatus,3000)}
+  if(t==='boost'){renderBoost()}
+  if(t==='games'){loadGames()}
+  window.scrollTo(0,0);
+}
+
+/* ---------- 부스트 ---------- */
+function setRing(usedPct){
+  const arc=$('ringArc'); const c=339.3;
+  arc.style.transition='stroke-dashoffset .6s';
+  arc.setAttribute('stroke-dashoffset', c*(1-usedPct/100));
+  arc.setAttribute('stroke', usedPct>=85?'#F87171':usedPct>=70?'#FB923C':'#22D3EE');
+}
+function renderBoost(){
+  const s=status();
+  if(!s){$('ramTxt').textContent='휴대폰 앱(APK)에서 실행해 주세요';return}
+  const used=s.ramTotal-s.ramAvail, pct=Math.round(used/s.ramTotal*100);
+  setRing(pct);
+  $('ramTxt').innerHTML=`메모리 사용 <span style="color:var(--cyan)">${pct}%</span> · 여유 ${gb(s.ramAvail)}GB`;
+  $('dndSw').checked=s.dndOn; $('autoDndSw').checked=s.autoDnd;
+  $('dndSub').textContent = s.dndGranted ? (s.dndOn?'켜짐 — 알림·전화 차단 중':'게임 중 알림·전화 차단') : '처음 한 번 권한 허용이 필요해요';
+  if(s.lastBoost){const m=Math.round((Date.now()-s.lastBoost)/60000); $('boostSub').textContent = m<1?'방금 최적화함': m<60? m+'분 전 최적화' : '탭하여 최적화'}
+  renderChecks(s);
+}
+function renderChecks(s){
+  const items=[];
+  items.push({ic:'🔋',t:'배터리 '+s.battery+'%'+(s.charging?' (충전 중)':''),
+    st:s.battery>=30?['ok','양호']:s.battery>=15?['warn','부족']:['bad','충전 필요'], go:null});
+  const tc = s.temp>=42?['bad','과열']:s.temp>=38?['warn','따뜻함']:['ok','정상'];
+  items.push({ic:'🌡️',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
+  items.push({ic:'⚙️',t:'절전 모드 '+(s.powerSave?'켜짐 — 성능이 제한돼요':'꺼짐'),st:s.powerSave?['warn','끄기 권장']:['ok','좋음'],go:s.powerSave?'battery':null});
+  items.push({ic:'📶',t:'네트워크 '+s.net+(s.net==='모바일 데이터'?' — 와이파이가 더 안정적일 수 있어요':''),
+    st:s.net==='연결 없음'?['bad','끊김']:s.net==='와이파이'?['ok','좋음']:['warn','확인'],go:s.net!=='와이파이'?'wifi':null});
+  const freePct=Math.round(s.diskFree/s.diskTotal*100);
+  items.push({ic:'💾',t:'저장공간 여유 '+gb(s.diskFree)+'GB ('+freePct+'%)',st:freePct>=15?['ok','양호']:freePct>=8?['warn','부족']:['bad','정리 필요'],go:freePct<15?'storage':null});
+  if(!s.dndGranted) items.push({ic:'🔕',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
+  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic">${i.ic}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">설정</button>`:''}</div>`).join('');
+}
+function openSet(w){ if(!N) return; if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
+
+function doBoost(){
+  if(!N){toast('휴대폰 앱에서만 동작해요');return}
+  const b=$('boostBtn'); if(b.classList.contains('busy')) return;
+  b.classList.add('busy'); $('boostSub').textContent='최적화 중…'; $('result').textContent='';
+  setRing(0);
+  N.boost();
+}
+function onBoostDone(json){
+  const r=JSON.parse(json); const b=$('boostBtn'); b.classList.remove('busy');
+  if(r.error){$('result').textContent='오류: '+r.error;return}
+  const f=mb(r.freed);
+  $('result').innerHTML = (f>=20 ? `메모리 <b>${f}MB</b> 확보!` : `이미 최적 상태예요 <b>✓</b>`)
+    + `<div class="sub">백그라운드 앱 ${r.count}개 정리${r.dnd?' · 방해금지 ON':''}</div>`;
+  $('boostSub').textContent='방금 최적화함';
+  setTimeout(renderBoost,200);
+}
+function toggleDnd(el){
+  if(!N) return;
+  const ok=N.setDnd(el.checked);
+  if(!ok){el.checked=!el.checked;toast('게임부스터를 찾아 "허용"으로 바꾼 뒤 돌아오세요',4000)}
+  else toast(el.checked?'방해금지 켜짐':'방해금지 꺼짐');
+}
+function toggleAutoDnd(el){
+  if(!N) return;
+  const s=status();
+  if(el.checked && s && !s.dndGranted){el.checked=false;N.openDndPermission();toast('먼저 방해금지 권한을 허용해 주세요',4000);return}
+  N.setAutoDnd(el.checked);
+}
+
+/* ---------- 내 게임 ---------- */
+function loadGames(){ if(N) N.loadApps(false); else onMyGames('[]') }
+function onMyGames(json){
+  const list=JSON.parse(json).sort((a,b)=>a.label.localeCompare(b.label,'ko'));
+  $('gameEmpty').style.display=list.length?'none':'block';
+  $('gameGrid').innerHTML=list.map(g=>`<div class="game" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="playGame(this.dataset.pkg,this.dataset.label)">
+     <button class="del" onclick="event.stopPropagation();removeGame('${g.pkg}')">✕</button>
+     <img src="data:image/png;base64,${g.icon}"><div class="nm">${esc(g.label)}</div></div>`).join('');
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toggleEdit(){editing=!editing;$('gameGrid').classList.toggle('editing',editing);$('editBtn').textContent=editing?'완료':'편집'}
+function removeGame(p){N.setGame(p,false);loadGames()}
+function playGame(pkg,label){
+  if(editing) return;
+  $('ovMsg').textContent='부스트 중…'; $('ovSub').textContent=label+' 준비'; $('overlay').classList.add('on');
+  N.launchGame(pkg,true);
+}
+function onLaunching(json){
+  const r=JSON.parse(json||'{}'); const f=r.freed?mb(r.freed):0;
+  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 앱 ${r.count||0}개 정리`;
+  setTimeout(()=>$('overlay').classList.remove('on'),1500);
+}
+function onLaunchFail(){ $('overlay').classList.remove('on'); toast('게임을 실행할 수 없어요') }
+
+function openPicker(){
+  if(!N){toast('휴대폰 앱에서만 동작해요');return}
+  $('picker').classList.add('on'); $('pickSearch').value='';
+  if(!allApps.length) N.loadApps(true); else renderPicker();
+}
+function onAllApps(json){
+  allApps=JSON.parse(json).sort((a,b)=>(b.mine-a.mine)||(b.isGame-a.isGame)||a.label.localeCompare(b.label,'ko'));
+  renderPicker();
+}
+function renderPicker(){
+  const q=$('pickSearch').value.trim().toLowerCase();
+  const list=allApps.filter(a=>!q||a.label.toLowerCase().includes(q));
+  $('pickCnt').textContent=allApps.filter(a=>a.mine).length+'개 선택';
+  $('pickList').innerHTML=list.map(a=>`<label class="appRow"><img src="data:image/png;base64,${a.icon}"><span class="nm">${esc(a.label)}${a.isGame?' <span class="badge ok">게임</span>':''}</span><input type="checkbox" ${a.mine?'checked':''} onchange="pick('${a.pkg}',this.checked)"></label>`).join('') || '<div class="empty">검색 결과 없음</div>';
+}
+function pick(p,on){N.setGame(p,on);const a=allApps.find(x=>x.pkg===p);if(a)a.mine=on;$('pickCnt').textContent=allApps.filter(a=>a.mine).length+'개 선택'}
+function closePicker(){$('picker').classList.remove('on');loadGames()}
+
+/* ---------- 상태 ---------- */
+function renderStatus(){
+  const s=status(); if(!s){$('stats').innerHTML='<div class="empty stat wide">휴대폰 앱(APK)에서 실행해 주세요</div>';return}
+  const ramPct=Math.round((s.ramTotal-s.ramAvail)/s.ramTotal*100);
+  const diskPct=Math.round((s.diskTotal-s.diskFree)/s.diskTotal*100);
+  const tCol=s.temp>=42?'var(--red)':s.temp>=38?'var(--orange)':'var(--green)';
+  const bCol=s.battery>=30?'var(--green)':s.battery>=15?'var(--orange)':'var(--red)';
+  const thermal=['정상','약간 따뜻','따뜻함','뜨거움','매우 뜨거움','위험','차단'][s.thermal]||null;
+  $('stats').innerHTML=`
+   <div class="stat"><div class="k">배터리${s.charging?' ⚡':''}</div><div class="v" style="color:${bCol}">${s.battery}<small>%</small></div><div class="bar"><i style="width:${s.battery}%;background:${bCol}"></i></div></div>
+   <div class="stat"><div class="k">온도</div><div class="v" style="color:${tCol}">${s.temp.toFixed(1)}<small>℃</small></div><div class="sub">${thermal?'기기 발열: '+thermal:''}</div></div>
+   <div class="stat wide"><div class="row"><div class="k">메모리 (RAM)</div><div class="sub">${gb(s.ramTotal-s.ramAvail)} / ${gb(s.ramTotal)}GB</div></div><div class="v">${ramPct}<small>% 사용</small></div><div class="bar"><i style="width:${ramPct}%;background:${ramPct>=85?'var(--red)':ramPct>=70?'var(--orange)':'var(--cyan)'}"></i></div></div>
+   <div class="stat wide"><div class="row"><div class="k">저장공간</div><div class="sub">여유 ${gb(s.diskFree)}GB</div></div><div class="v">${diskPct}<small>% 사용</small></div><div class="bar"><i style="width:${diskPct}%;background:var(--violet)"></i></div></div>
+   <div class="stat"><div class="k">네트워크</div><div class="v" style="font-size:22px">${s.net}</div></div>
+   <div class="stat"><div class="k">CPU</div><div class="v" style="font-size:22px">${s.cores}코어</div><div class="sub">${s.cpuMaxMhz?'최대 '+(s.cpuMaxMhz/1000).toFixed(2)+'GHz':''}</div></div>
+   <div class="stat wide"><div class="row"><div><div class="k">절전 모드</div><div style="font-weight:700;margin-top:4px">${s.powerSave?'켜짐 — 게임 성능 제한':'꺼짐'}</div></div>${s.powerSave?'<button class="go btn" style="width:auto;padding:8px 14px;font-size:16px" onclick="openSet(\'battery\')">끄러 가기</button>':'<span class="badge ok">좋음</span>'}</div></div>`;
+  $('devInfo').textContent=s.model+' · 안드로이드 '+s.android;
+}
+function doPing(){
+  if(!N){toast('휴대폰 앱에서만 동작해요');return}
+  $('pingBtn').textContent='측정 중…';$('pingBtn').disabled=true;N.ping();
+}
+function onPing(json){
+  const r=JSON.parse(json);$('pingBtn').textContent='다시 측정';$('pingBtn').disabled=false;
+  if(r.best<0){$('pingVal').textContent='✕';$('pingSub').textContent='인터넷 연결을 확인하세요';return}
+  const v=r.avg; const c=v<=50?'var(--green)':v<=100?'var(--orange)':'var(--red)';
+  $('pingVal').innerHTML=`<span style="color:${c}">${v}<small style="font-size:16px">ms</small></span>`;
+  $('pingSub').textContent=(v<=50?'아주 좋음 — 실시간 게임 OK':v<=100?'보통 — 대전 게임은 약간 지연':'느림 — 와이파이 변경 권장')+` (최저 ${r.best}ms)`;
+}
+
+/* ---------- 업데이트 ---------- */
+let upInfo=null, upBusy=false, upManual=false, upWaitPerm=false, lastCheck=0;
+function ver(){ if(!N||!N.getVersion) return null; try{return JSON.parse(N.getVersion())}catch(e){return null} }
+function checkUpdate(manual){
+  if(!N||!N.checkUpdate) return;
+  upManual=!!manual; lastCheck=Date.now(); N.checkUpdate();
+}
+function manualCheck(){ $('verBtn').textContent='확인 중…'; $('verBtn').disabled=true; checkUpdate(true) }
+function onUpdateInfo(json){
+  const r=JSON.parse(json);
+  $('verBtn').textContent='업데이트 확인'; $('verBtn').disabled=false;
+  const v=ver();
+  if(r.error){
+    $('verSub').textContent='현재 '+(v?v.name:'')+' · 확인 실패';
+    if(upManual) toast('업데이트 서버에 연결할 수 없어요. 인터넷을 확인해 주세요',3500);
+    return;
+  }
+  if(r.none){
+    upInfo=null; $('upBanner').classList.remove('on');
+    $('verSub').textContent='현재 '+r.current+' · 최신 버전이에요';
+    if(upManual) toast('최신 버전이에요 ✓');
+    return;
+  }
+  upInfo=r;
+  $('verSub').innerHTML='현재 '+esc(r.current)+' → <b style="color:var(--yellow)">'+esc(r.name)+'</b> 나옴';
+  let hidden=''; try{hidden=localStorage.getItem('upHide')||''}catch(e){}
+  if(hidden!==r.tag || upManual){
+    $('upBannerSub').textContent=r.name+(r.notes?' · '+r.notes.split('\n').find(l=>l.trim())?.replace(/^[-*•\s]+/,'').slice(0,40):'');
+    $('upBanner').classList.add('on');
+  }
+  if(upManual || pendingOpen){ pendingOpen=false; openUpdate() }
+}
+function hideBanner(){ $('upBanner').classList.remove('on'); try{localStorage.setItem('upHide',upInfo?upInfo.tag:'')}catch(e){} }
+let pendingOpen=false;
+function openUpdate(){
+  if(!upInfo){ pendingOpen=true; checkUpdate(false); return }
+  $('upTitle').textContent='새 버전 '+upInfo.name;
+  const v=ver(); $('upVer').textContent='현재 '+(v?v.name:'')+(upInfo.size?' · 크기 '+(upInfo.size/1048576).toFixed(1)+'MB':'');
+  $('upNotes').textContent=(upInfo.notes||'').trim()||'성능과 안정성을 개선했어요.';
+  resetUpSheet();
+  $('upSheet').classList.add('on');
+}
+function resetUpSheet(){
+  upBusy=false; $('upProgWrap').style.display='none'; $('upProg').style.width='0';
+  $('upGo').disabled=false; $('upGo').textContent='지금 설치'; $('upLater').disabled=false;
+}
+function closeUpdate(){ if(upBusy) return; $('upSheet').classList.remove('on') }
+function startUpdate(){
+  if(!upInfo||upBusy) return;
+  const res=N.installUpdate(upInfo.url);
+  if(res==='permission'){
+    upWaitPerm=true;
+    toast('"이 출처 허용"을 켜고 뒤로 돌아오면 이어서 설치돼요',5000);
+    return;
+  }
+  upBusy=true; $('upGo').disabled=true; $('upLater').disabled=true; $('upGo').textContent='받는 중…';
+  $('upProgWrap').style.display='block'; $('upStage').textContent='다운로드 중… 0%';
+}
+function onUpdateProgress(p){ $('upProg').style.width=p+'%'; $('upStage').textContent='다운로드 중… '+p+'%' }
+function onUpdateStage(s){
+  if(s==='installing'){ $('upProg').style.width='100%'; $('upStage').textContent='설치 준비 중…' }
+  if(s==='confirm'){ $('upStage').textContent='설치 화면에서 "업데이트"를 눌러 주세요'; upBusy=false; $('upLater').disabled=false; $('upGo').disabled=false; $('upGo').textContent='다시 설치' }
+}
+function onUpdateError(msg){
+  resetUpSheet(); toast(msg,4500);
+  $('upProgWrap').style.display='block'; $('upStage').textContent=msg;
+}
+
+window.onAppResume=()=>{
+  if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
+  if(upWaitPerm){ upWaitPerm=false; if($('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
+  else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
+};
+window.onBack=()=>{
+  if($('upSheet').classList.contains('on')){closeUpdate();return true}
+  if($('picker').classList.contains('on')){closePicker();return true}
+  if(editing){toggleEdit();return true}
+  if(cur!=='boost'){go('boost');return true}
+  return false;
+};
+renderBoost();
+(function(){ const v=ver(); if(v){ $('verSub').textContent='현재 '+v.name; if(v.openUpdate) pendingOpen=true } setTimeout(()=>checkUpdate(false),800) })();
+</script>
+</body>
+</html>

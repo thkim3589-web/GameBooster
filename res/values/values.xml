@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">게임부스터</string>
+    <color name="ic_bg">#0B1220</color>
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ic_bg</item>
+        <item name="android:statusBarColor">@color/ic_bg</item>
+        <item name="android:navigationBarColor">@color/ic_bg</item>
+    </style>
+</resources>
