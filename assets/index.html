@@ -750,8 +750,16 @@ function renderMode(){
       <div class="mlabel">⏰ 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
       ${warn}
     </div>
-    ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}`;
+    ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}
+    ${isDef?'':`<button class="btn" style="margin:8px 0 14px" onclick="pinGame()">🏠 홈 화면에 바로가기 만들기</button>
+      <div class="sub" style="text-align:center;font-size:14px;margin:-6px 0 12px">홈 화면 아이콘을 누르면 부스트 후 바로 게임이 켜져요</div>`}`;
 }
+function pinGame(){
+  if(!N||!N.pinShortcut) return;
+  const r=N.pinShortcut(modePkg);
+  toast(r==='ok'?'홈 화면에 추가할지 묻는 창이 뜨면 "추가"를 눌러주세요':r==='unsupported'?'이 홈 화면 앱은 바로가기 추가를 지원하지 않아요':'바로가기를 만들 수 없어요',4000);
+}
+function playFromShortcut(j){ try{ const g=JSON.parse(j); closeMode(); closeReport(); go('games'); setTimeout(()=>playGame(g.pkg,g.label),300) }catch(e){} }
 function toggleOpt(k){ modeData[k]=!modeData[k]; renderMode() }
 function saveMode(){
   const m={dnd:!!modeData.dnd,keepScreen:!!modeData.keepScreen,mediaVol:+modeData.mediaVol,breakMin:+modeData.breakMin};
@@ -891,7 +899,7 @@ window.onBack=()=>{
 };
 renderBoost();
 (function(){ const v=ver(); if(v){ $('verSub').textContent='현재 '+v.name; if(v.openUpdate) pendingOpen=true } setTimeout(()=>checkUpdate(false),800) })();
-(function(){ const p=perms(); if(p&&!p.onboarded) openOnb(); renderPermSub() })();
+(function(){ const pp=N&&N.takePendingPlay?N.takePendingPlay():''; if(pp){ playFromShortcut(pp); return } const p=perms(); if(p&&!p.onboarded) openOnb(); renderPermSub() })();
 (function(){ if(!N||!N.takePendingReport) return; loadSessions(); const id=N.takePendingReport(); if(id&&id!=='0'){ go('games'); setTimeout(()=>openReport(id),150) } })();
 </script>
 </body>

@@ -68,6 +68,19 @@ public class MainActivity extends Activity {
         Updater.schedule(this);
         SessionService.ensureWatching(this);
         if (getIntent().getBooleanExtra("fromUpdate", false)) openUpdateOnLoad = true;
+        if (ACTION_PLAY.equals(getIntent().getAction())) pendingPlay = getIntent().getStringExtra("pkg");
+    }
+
+    static final String ACTION_PLAY = "com.thkim.gamebooster.PLAY";
+    private String pendingPlay;      // 홈 화면 바로가기로 들어온 게임
+
+    private String playJson(String pkg) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("pkg", pkg);
+            o.put("label", getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString());
+            return o.toString();
+        } catch (Exception e) { return ""; }
     }
 
     private boolean openUpdateOnLoad = false;
@@ -77,6 +90,10 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         if (intent.getBooleanExtra("fromUpdate", false))
             web.evaluateJavascript("window.openUpdate && openUpdate()", null);
+        if (ACTION_PLAY.equals(intent.getAction())) {
+            String j = playJson(intent.getStringExtra("pkg"));
+            if (!j.isEmpty()) web.evaluateJavascript("window.playFromShortcut && playFromShortcut(" + JSONObject.quote(j) + ")", null);
+        }
     }
 
     @Override
@@ -547,6 +564,51 @@ public class MainActivity extends Activity {
                     }
                 } catch (Exception ignored) {}
             });
+        }
+
+        /** 페이지가 준비되면 부름: 바로가기로 들어온 게임 정보 (없으면 "") */
+        @JavascriptInterface
+        public String takePendingPlay() {
+            String p = pendingPlay; pendingPlay = null;
+            return p == null ? "" : playJson(p);
+        }
+
+        /** 홈 화면에 '부스트 후 실행' 바로가기 만들기. 반환: ok / unsupported / error */
+        @JavascriptInterface
+        public String pinShortcut(String pkg) {
+            try {
+                android.content.pm.ShortcutManager sm = getSystemService(android.content.pm.ShortcutManager.class);
+                if (sm == null || !sm.isRequestPinShortcutSupported()) return "unsupported";
+                PackageManager pm = getPackageManager();
+                String label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                // 게임 아이콘 + 오른쪽 아래 번개 배지
+                int size = 192;
+                Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(b);
+                Drawable d = pm.getApplicationIcon(pkg);
+                d.setBounds(0, 0, size, size);
+                d.draw(c);
+                android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+                float r = size * 0.21f, cx = size - r - 4, cy = size - r - 4;
+                p.setColor(0xFF0B1220); c.drawCircle(cx, cy, r + 5, p);
+                p.setColor(0xFFFACC15); c.drawCircle(cx, cy, r, p);
+                android.graphics.Path bolt = new android.graphics.Path();
+                float u = r / 10f;
+                bolt.moveTo(cx + 1 * u, cy - 7 * u); bolt.lineTo(cx - 4 * u, cy + 1 * u); bolt.lineTo(cx - 0.5f * u, cy + 1 * u);
+                bolt.lineTo(cx - 2 * u, cy + 7 * u); bolt.lineTo(cx + 4 * u, cy - 1.5f * u); bolt.lineTo(cx + 0.5f * u, cy - 1.5f * u); bolt.close();
+                p.setColor(0xFF0B1220); c.drawPath(bolt, p);
+
+                Intent launch = new Intent(MainActivity.this, MainActivity.class).setAction(ACTION_PLAY).putExtra("pkg", pkg)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                android.content.pm.ShortcutInfo si = new android.content.pm.ShortcutInfo.Builder(MainActivity.this, "play_" + pkg)
+                        .setShortLabel(label.length() > 10 ? label.substring(0, 10) : label)
+                        .setLongLabel("⚡ " + label + " 부스트 실행")
+                        .setIcon(android.graphics.drawable.Icon.createWithBitmap(b))
+                        .setIntent(launch)
+                        .build();
+                sm.requestPinShortcut(si, null);
+                return "ok";
+            } catch (Exception e) { return "error"; }
         }
 
         @JavascriptInterface
