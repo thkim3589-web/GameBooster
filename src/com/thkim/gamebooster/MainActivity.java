@@ -698,6 +698,12 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean getAlerts() { return prefs.getBoolean("alerts", true); }
+
+        @JavascriptInterface
+        public void setAlerts(boolean on) { prefs.edit().putBoolean("alerts", on).apply(); }
+
+        @JavascriptInterface
         public boolean getRecord() { return prefs.getBoolean("record", true); }
 
         /** HUD 켜짐 = 설정 켜짐 + 권한 있음 */

@@ -262,6 +262,10 @@ nav button.on{color:var(--cyan)}
         <div><div style="font-weight:700">홈 화면에서 켠 게임도 자동 감지</div><div class="sub">위 게임 목록의 게임을 어디서 켜든 게임 모드·HUD·기록이 자동으로 시작되고, 게임을 나가면 끝나요</div></div>
         <label class="sw"><input type="checkbox" id="autoSw" onchange="toggleAuto(this)"><span></span></label>
       </div>
+      <div class="row">
+        <div><div style="font-weight:700">게임 중 경고 알림</div><div class="sub">45℃ 이상으로 뜨거워지거나 배터리가 15% 아래로 내려가면 바로 알려줘요</div></div>
+        <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
+      </div>
     </div>
     <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')">🎛 기본 게임 모드 설정</button>
     <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 ⚙를 누르세요</div>
@@ -811,6 +815,7 @@ function loadSessions(){
   if(N&&N.getRecord) $('recSw').checked=N.getRecord();
   if(N&&N.getHud) $('hudSw').checked=N.getHud();
   if(N&&N.getAutoDetect) $('autoSw').checked=N.getAutoDetect();
+  if(N&&N.getAlerts) $('alertSw').checked=N.getAlerts();
   renderSessions();
 }
 function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}시간 ${m}분`:m?`${m}분`:`${s}초`}

@@ -61,6 +61,9 @@ public class SessionService extends Service {
     private long leftAt;                  // 게임에서 다른 앱으로 간 시각 (0 = 게임 중)
     private String fgPkg;                 // 지금 화면 맨 앞 앱
     private long lastQuery;
+    private boolean heatArmed = true, batArmed = true;   // 실시간 경고 (한 번 알리면 회복될 때까지 쉼)
+    static final double HEAT_ALERT = 45.0, HEAT_REARM = 42.0;
+    static final int BAT_ALERT = 15;
     static volatile boolean lastWasRecord = true;
 
     static File metaFile(Context c) { return new File(c.getFilesDir(), "session_meta.json"); }
@@ -160,6 +163,7 @@ public class SessionService extends Service {
     private void startSessionUi() {
         inSession = true;
         leftAt = 0;
+        heatArmed = true; batArmed = true;
         start = readStart(this);
         startForeground(NOTI_ID, buildNoti());
         ticks = 0;
@@ -189,6 +193,7 @@ public class SessionService extends Service {
                 if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
                 ticks++;
                 if (hud != null) hud.update();
+                checkAlerts();
                 long now = System.currentTimeMillis();
                 if (now >= nextBreak) {
                     int played = (int) ((now - start) / 60_000);
@@ -218,6 +223,51 @@ public class SessionService extends Service {
             stopAll();
         }
     };
+
+    /** 게임 중 실시간 경고: 45℃ 이상, 배터리 15% 이하 (HUD가 꺼져 있어도 알림) */
+    private void checkAlerts() {
+        if (!prefs(this).getBoolean("alerts", true)) return;
+        try {
+            Intent bat = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (bat == null) return;
+            double temp = bat.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0;
+            int lvl = bat.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / Math.max(1, bat.getIntExtra(BatteryManager.EXTRA_SCALE, 100));
+            int st = bat.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean charging = st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL;
+
+            if (temp > 0 && temp < HEAT_REARM) heatArmed = true;
+            if (temp >= HEAT_ALERT && heatArmed) {
+                heatArmed = false;
+                alert(91, "🔥 휴대폰이 뜨거워요 (" + String.format(java.util.Locale.US, "%.1f", temp) + "℃)",
+                        charging ? "충전기를 빼거나 잠깐 쉬어가세요. 이대로면 성능이 떨어지고 배터리에 무리가 가요."
+                                 : "잠깐 쉬거나 그래픽을 낮춰주세요. 이대로면 휴대폰이 스스로 성능을 낮춰요.");
+                if (hud != null) hud.flash("🔥 " + String.format(java.util.Locale.US, "%.0f", temp) + "℃ — 잠깐 쉬어가세요");
+            }
+            if (charging || lvl > BAT_ALERT + 5) batArmed = true;
+            if (!charging && lvl <= BAT_ALERT && batArmed) {
+                batArmed = false;
+                alert(92, "🔋 배터리 " + lvl + "% 남았어요", "게임이 갑자기 꺼지기 전에 충전기를 연결하세요.");
+                if (hud != null) hud.flash("🔋 배터리 " + lvl + "% — 충전하세요");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void alert(int id, String title, String text) {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            NotificationChannel ch = new NotificationChannel("alert", "게임 중 경고", NotificationManager.IMPORTANCE_HIGH);
+            ch.setBypassDnd(true);
+            nm.createNotificationChannel(ch);
+            nm.notify(id, new Notification.Builder(this, "alert")
+                    .setSmallIcon(android.R.drawable.stat_sys_warning)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setStyle(new Notification.BigTextStyle().bigText(text))
+                    .setAutoCancel(true)
+                    .setTimeoutAfter(120_000)
+                    .build());
+        } catch (Exception ignored) {}
+    }
 
     /** 사용 기록으로 지금 맨 앞 앱을 갱신 */
     private void updateForeground() {
