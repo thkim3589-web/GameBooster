@@ -105,6 +105,20 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px}
 .coach{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:16px;line-height:1.7}
+/* 도구 */
+.tool{position:fixed;inset:0;z-index:60;background:#05080F;display:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.tool.on{display:block}
+.tool canvas{position:absolute;inset:0;width:100%;height:100%}
+.tool .thd{position:absolute;left:0;right:0;top:0;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;pointer-events:none}
+.tool .thd{transition:opacity .15s}
+.tool.touching .thd{opacity:.12}
+.tool.touching .thd .tbtn{pointer-events:none}
+.tool .thd .info{flex:1;background:rgba(19,28,46,.88);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:15px;line-height:1.6}
+.tool .tbtn{pointer-events:auto;background:rgba(26,37,64,.95);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:800;font-size:16px;color:var(--text)}
+.rx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;transition:background .05s}
+.rx .big{font-size:44px;font-weight:900}
+.rx .msg{font-size:20px;margin-top:10px;font-weight:700}
+.rx .res{font-size:17px;margin-top:16px;line-height:1.8}
 .mlabel{font-weight:700;margin-top:6px}
 .dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
@@ -286,6 +300,15 @@ nav button.on{color:var(--cyan)}
       </div>
       <button class="btn" style="margin-top:12px" onclick="openGfx()">추천 보기</button>
     </div>
+    <div class="card" style="margin-top:14px">
+      <div style="font-weight:700">🎯 터치·반응 도구</div>
+      <div class="sub">터치가 안 먹는 곳이 있는지, 내 반응속도가 얼마인지 확인해요</div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn" style="flex:1" onclick="openTouchTest()">👆 터치 테스트</button>
+        <button class="btn" style="flex:1" onclick="openReflex()">⚡ 반응속도</button>
+      </div>
+      <div class="sub" style="font-size:14px;margin-top:8px;text-align:center" id="reflexBest"></div>
+    </div>
     <div class="card" style="margin-top:14px" id="ncCard">
       <h3 style="margin-bottom:4px">와이파이 vs 4G/5G</h3>
       <div class="sub">두 연결을 동시에 10번씩 재서 지금 게임하기 더 좋은 쪽을 알려줘요</div>
@@ -364,6 +387,16 @@ nav button.on{color:var(--cyan)}
   </div>
 </div>
 
+<div class="tool" id="touchTool">
+  <canvas id="tcv"></canvas>
+  <div class="thd"><div class="info" id="tInfo"></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><button class="tbtn" onclick="closeTool()">닫기</button><button class="tbtn" onclick="resetTouch()">초기화</button></div></div>
+</div>
+<div class="tool" id="reflexTool">
+  <div class="rx" id="rx"></div>
+  <div class="thd"><div style="flex:1"></div><button class="tbtn" onclick="closeTool()">닫기</button></div>
+</div>
+
 <div class="modal" id="statSheet" onclick="if(event.target===this)closeStat()">
   <div class="sheet">
     <div class="hd"><b style="font-size:20px" id="statTitle">게임 통계</b><div class="sub" id="statSub"></div></div>
@@ -417,7 +450,7 @@ function go(t){
   document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   clearInterval(statTimer);
-  if(t==='status'){renderStatus();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
+  if(t==='status'){renderStatus();renderReflexBest();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
   if(t==='boost'){renderBoost()}
   if(t==='games'){loadGames();loadSessions()}
   window.scrollTo(0,0);
@@ -822,6 +855,71 @@ function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`
 function fmtDate(ms){const d=new Date(ms),n=new Date();const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   return (d.toDateString()===n.toDateString()?'오늘':(d.getMonth()+1)+'/'+d.getDate())+' '+hm}
 function tColor(t){return t>=42?'var(--red)':t>=38?'var(--orange)':'var(--green)'}
+/* ---------- 터치 테스트 ---------- */
+const TC={cols:6,rows:10,cells:null,pts:{},maxTouch:0,evCount:0,rate:0,lastRateT:0,ctx:null,w:0,h:0,dpr:1};
+function openTouchTest(){
+  const t=$('touchTool'); t.classList.add('on');
+  const cv=$('tcv'); TC.dpr=window.devicePixelRatio||1; TC.w=window.innerWidth; TC.h=window.innerHeight;
+  cv.width=TC.w*TC.dpr; cv.height=TC.h*TC.dpr; TC.ctx=cv.getContext('2d'); TC.ctx.setTransform(TC.dpr,0,0,TC.dpr,0,0);
+  resetTouch();
+  if(!cv._bound){ cv._bound=true;
+    const down=e=>{ e.preventDefault(); try{cv.setPointerCapture(e.pointerId)}catch(_){} $('touchTool').classList.add('touching'); TC.pts[e.pointerId]={x:e.clientX,y:e.clientY}; TC.maxTouch=Math.max(TC.maxTouch,Object.keys(TC.pts).length); mark(e.clientX,e.clientY); drawTouch() };
+    const move=e=>{ if(!TC.pts[e.pointerId]) return; e.preventDefault();
+      const list=e.getCoalescedEvents?e.getCoalescedEvents():[e]; TC.evCount+=list.length||1;
+      (list.length?list:[e]).forEach(c=>mark(c.clientX,c.clientY)); TC.pts[e.pointerId]={x:e.clientX,y:e.clientY};
+      const now=performance.now(); if(now-TC.lastRateT>=1000){ TC.rate=Math.round(TC.evCount*1000/(now-TC.lastRateT)/Math.max(1,Object.keys(TC.pts).length)); TC.evCount=0; TC.lastRateT=now }
+      drawTouch() };
+    const up=e=>{ delete TC.pts[e.pointerId]; if(!Object.keys(TC.pts).length) $('touchTool').classList.remove('touching'); drawTouch() };
+    cv.addEventListener('pointerdown',down); cv.addEventListener('pointermove',move);
+    ['pointerup','pointercancel','pointerleave'].forEach(n=>cv.addEventListener(n,up));
+  }
+}
+function resetTouch(){ TC.cells=Array(TC.cols*TC.rows).fill(0); TC.pts={}; TC.maxTouch=0; TC.rate=0; TC.evCount=0; TC.lastRateT=performance.now(); drawTouch() }
+function mark(x,y){ const c=Math.min(TC.cols-1,Math.floor(x/TC.w*TC.cols)), r=Math.min(TC.rows-1,Math.floor(y/TC.h*TC.rows)); TC.cells[r*TC.cols+c]=1 }
+function drawTouch(){
+  const g=TC.ctx, cw=TC.w/TC.cols, ch=TC.h/TC.rows; g.clearRect(0,0,TC.w,TC.h);
+  for(let r=0;r<TC.rows;r++)for(let c=0;c<TC.cols;c++){ const on=TC.cells[r*TC.cols+c];
+    g.fillStyle=on?'rgba(34,211,238,.30)':'rgba(255,255,255,.02)'; g.fillRect(c*cw+1,r*ch+1,cw-2,ch-2);
+    g.strokeStyle='rgba(148,163,184,.18)'; g.strokeRect(c*cw+.5,r*ch+.5,cw-1,ch-1) }
+  Object.values(TC.pts).forEach((p,i)=>{ g.beginPath(); g.arc(p.x,p.y,34,0,7); g.fillStyle='rgba(250,204,21,.35)'; g.fill();
+    g.lineWidth=3; g.strokeStyle='#FACC15'; g.stroke(); g.fillStyle='#fff'; g.font='bold 18px sans-serif'; g.textAlign='center'; g.fillText(i+1,p.x,p.y-44) });
+  const done=TC.cells.filter(x=>x).length, all=TC.cells.length;
+  $('tInfo').innerHTML=`<b>화면 전체를 손가락으로 문질러 보세요</b><br>칠해진 칸 <b style="color:var(--cyan)">${done}/${all}</b>`+
+    ` · 동시 터치 최대 <b style="color:var(--yellow)">${TC.maxTouch}</b>개`+(TC.rate?` · 터치 감지 약 <b style="color:var(--green)">${TC.rate}Hz</b>`:'')+
+    (done===all?'<br><span style="color:var(--green)">✓ 모든 칸이 정상적으로 터치돼요</span>':done>all*0.8?'<br><span class="sub">끝까지 칠해지지 않는 칸이 있으면 그 부분 터치가 약한 거예요</span>':'<br><span class="sub" style="font-size:13px">문지르는 동안 이 안내는 흐려져요. 버튼 아래 칸도 칠할 수 있어요</span>');
+}
+
+/* ---------- 반응속도 ---------- */
+const RX={round:0,times:[],state:'idle',timer:null,shownAt:0};
+function bestReflex(){ try{ return +localStorage.getItem('reflexBest')||0 }catch(e){ return 0 } }
+function renderReflexBest(){ const b=bestReflex(); if($('reflexBest')) $('reflexBest').textContent=b?`반응속도 최고 기록 ${b}ms`:'' }
+function openReflex(){ $('reflexTool').classList.add('on'); RX.round=0; RX.times=[]; rxIntro();
+  const el=$('rx'); if(!el._bound){ el._bound=true; el.addEventListener('pointerdown',rxTap) } }
+function rxSet(bg,html){ const el=$('rx'); el.style.background=bg; el.innerHTML=html }
+function rxIntro(){ RX.state='intro'; rxSet('#0B1220',`<div class="big">⚡</div><div class="msg">반응속도 측정</div><div class="res sub">화면이 <b style="color:var(--green)">초록색</b>으로 바뀌는 순간 최대한 빨리 누르세요.<br>5번 재서 평균을 내요.<br><br><b style="color:var(--text)">화면을 눌러 시작</b></div>`) }
+function rxWait(){ RX.state='wait'; rxSet('#7F1D1D',`<div class="big">${RX.round+1} / 5</div><div class="msg">초록색이 되면 누르세요…</div>`);
+  clearTimeout(RX.timer); RX.timer=setTimeout(()=>{ RX.state='go'; RX.shownAt=performance.now(); rxSet('#15803D','<div class="big">지금!</div>') },1500+Math.random()*2500) }
+function rxTap(e){
+  e.preventDefault();
+  if(RX.state==='intro'||RX.state==='done'){ RX.round=0; RX.times=[]; rxWait(); return }
+  if(RX.state==='wait'){ clearTimeout(RX.timer); RX.state='early'; rxSet('#9A3412','<div class="big">너무 빨라요!</div><div class="msg">초록색이 된 다음에 누르세요</div><div class="res">눌러서 다시</div>'); return }
+  if(RX.state==='early'){ rxWait(); return }
+  if(RX.state==='go'){ const ms=Math.round(performance.now()-RX.shownAt); RX.times.push(ms); RX.round++;
+    if(RX.round>=5) return rxDone();
+    RX.state='shown'; rxSet('#0B1220',`<div class="big" style="color:var(--cyan)">${ms}<span style="font-size:22px">ms</span></div><div class="msg">${RX.round} / 5</div><div class="res">눌러서 다음</div>`); return }
+  if(RX.state==='shown'){ rxWait() }
+}
+function rxDone(){
+  RX.state='done'; const a=Math.round(RX.times.reduce((x,y)=>x+y,0)/RX.times.length), b=Math.min(...RX.times);
+  const prev=bestReflex(), isBest=!prev||a<prev; if(isBest){ try{localStorage.setItem('reflexBest',a)}catch(e){} }
+  const g=a<200?['아주 빨라요 🏆','var(--green)']:a<250?['빨라요 👍','var(--green)']:a<300?['보통이에요','var(--cyan)']:a<400?['조금 느려요','var(--orange)']:['연습이 필요해요','var(--red)'];
+  rxSet('#0B1220',`<div class="msg">평균 반응속도</div><div class="big" style="color:${g[1]}">${a}<span style="font-size:22px">ms</span></div>
+    <div class="msg" style="color:${g[1]}">${g[0]}${isBest?' · 새 최고 기록!':''}</div>
+    <div class="res">가장 빠름 ${b}ms · ${RX.times.join(' / ')}ms<br><span class="sub">화면·터치 지연이 조금 포함돼요. 보통 사람은 250ms 안팎이에요.</span><br><br><b>눌러서 다시 하기</b></div>`);
+  renderReflexBest();
+}
+function closeTool(){ clearTimeout(RX.timer); $('touchTool').classList.remove('on'); $('reflexTool').classList.remove('on'); renderReflexBest() }
+
 /* ---------- 게임별 통계 · 코치 ---------- */
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 function gameStats(list){
@@ -982,6 +1080,7 @@ window.onAppResume=()=>{
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{
+  if($('touchTool').classList.contains('on')||$('reflexTool').classList.contains('on')){closeTool();return true}
   if($('statSheet').classList.contains('on')){closeStat();return true}
   if($('onb').classList.contains('on')){closeOnb();return true}
   if($('gfxSheet').classList.contains('on')){closeGfx();return true}
