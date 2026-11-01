@@ -1,6 +1,10 @@
 package com.thkim.gamebooster;
 
 import android.app.ActivityManager;
+import android.app.AppOpsManager;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
+import android.content.SharedPreferences;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -27,16 +31,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 게임하는 동안 10초마다 온도·배터리·메모리·발열 단계를 기록한다.
- * 게임부스터로 돌아오거나 알림의 '기록 끝내기'를 누르면 끝나고 리포트가 저장된다.
+ * 게임 세션 서비스.
+ * - 세션: 게임하는 동안 기록(10초마다), HUD, 게임 모드, 휴식 알림
+ * - 감시 모드(자동 감지 켜짐): 홈 화면에서 켠 게임도 알아채서 세션을 자동으로 시작·종료
  */
 public class SessionService extends Service {
 
     static final String ACTION_STOP = "com.thkim.gamebooster.SESSION_STOP";
-    private static final String CH = "session";
+    static final String ACTION_WATCH = "com.thkim.gamebooster.WATCH";
+    static final String ACTION_UNWATCH = "com.thkim.gamebooster.UNWATCH";
+    static final String ACTION_ENDED = "com.thkim.gamebooster.SESSION_ENDED";
+    private static final String CH = "session", CH_WATCH = "watch", CH_REPORT = "report";
     private static final int NOTI_ID = 77;
     private static final long INTERVAL_MS = 10_000;  // 기록 간격
-    private static final long HUD_MS = 2_000;        // HUD 갱신 간격
+    private static final long HUD_MS = 2_000;        // 틱 간격
+    private static final long LEAVE_MS = 8_000;      // 게임을 떠나고 이만큼 지나면 종료
     private static final long MAX_MS = 4L * 60 * 60 * 1000; // 최대 4시간
     static final long MIN_SEC = 30;                            // 30초 미만은 버림
 
@@ -47,13 +56,48 @@ public class SessionService extends Service {
     private android.view.View keepView;   // 화면 켜짐 유지용 투명 점
     private int breakMin;                 // 휴식 알림 간격(분), 0이면 끔
     private long nextBreak;
+    private boolean inSession;
+    private String sessionPkg;
+    private long leftAt;                  // 게임에서 다른 앱으로 간 시각 (0 = 게임 중)
+    private String fgPkg;                 // 지금 화면 맨 앞 앱
+    private long lastQuery;
     static volatile boolean lastWasRecord = true;
 
     static File metaFile(Context c) { return new File(c.getFilesDir(), "session_meta.json"); }
     static File dataFile(Context c) { return new File(c.getFilesDir(), "session_data.csv"); }
 
-    /** 게임 실행 직전에 부른다 */
-    static void begin(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter, boolean record) {
+    private static SharedPreferences prefs(Context c) { return c.getSharedPreferences("gb", MODE_PRIVATE); }
+
+    // ---------- 자동 감지 설정 ----------
+
+    static boolean hasUsageAccess(Context c) {
+        try {
+            AppOpsManager ao = (AppOpsManager) c.getSystemService(APP_OPS_SERVICE);
+            int mode = Build.VERSION.SDK_INT >= 29
+                    ? ao.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), c.getPackageName())
+                    : ao.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), c.getPackageName());
+            return mode == AppOpsManager.MODE_ALLOWED;
+        } catch (Exception e) { return false; }
+    }
+
+    static boolean watchEnabled(Context c) { return prefs(c).getBoolean("autoDetect", false) && hasUsageAccess(c); }
+
+    /** 자동 감지가 켜져 있으면 감시 시작 (앱 실행·부팅 때 부름) */
+    static void ensureWatching(Context c) {
+        if (!watchEnabled(c)) return;
+        try {
+            c.startForegroundService(new Intent(c, SessionService.class).setAction(ACTION_WATCH));
+        } catch (Exception ignored) {}
+    }
+
+    static void stopWatching(Context c) {
+        try { c.startService(new Intent(c, SessionService.class).setAction(ACTION_UNWATCH)); } catch (Exception ignored) {}
+    }
+
+    // ---------- 세션 시작 ----------
+
+    /** 세션 파일 준비 + 게임 모드 적용 (서비스 시작은 하지 않음) */
+    static boolean prepare(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter, boolean record) {
         try {
             if (metaFile(c).exists()) finish(c);        // 끝나지 않은 이전 세션 정리 + 설정 복원
             JSONObject mode = GameMode.apply(c, pkg);   // 게임별 모드 적용 (끝나면 복원)
@@ -69,78 +113,238 @@ public class SessionService extends Service {
             m.put("ramAfter", ramAfter);
             try (FileWriter w = new FileWriter(metaFile(c))) { w.write(m.toString()); }
             dataFile(c).delete();
-            Intent i = new Intent(c, SessionService.class);
-            if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
-        } catch (Exception ignored) {}
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
+    /** 게임부스터에서 게임을 실행하기 직전에 부른다 */
+    static void begin(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter, boolean record) {
+        if (!prepare(c, pkg, label, boosted, ramBefore, ramAfter, record)) return;
+        try { c.startForegroundService(new Intent(c, SessionService.class)); } catch (Exception ignored) {}
     }
 
     static boolean isRecording(Context c) { return metaFile(c).exists(); }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            endAndOpen(intent.getBooleanExtra("open", false));
-            return START_NOT_STICKY;
+        String action = intent == null ? null : intent.getAction();
+        if (ACTION_STOP.equals(action)) {
+            endSession(intent.getBooleanExtra("open", false), false);
+            return START_STICKY;
         }
+        if (ACTION_UNWATCH.equals(action)) {
+            if (!inSession) { stopAll(); return START_NOT_STICKY; }
+            return START_STICKY;            // 세션 중이면 세션이 끝날 때 멈춤
+        }
+        if (ACTION_ENDED.equals(action)) {  // 게임부스터 화면에서 세션을 끝냈음
+            closeSessionUi();
+            afterSession();
+            return START_STICKY;
+        }
+        if (ACTION_WATCH.equals(action)) {
+            if (!inSession) startForeground(NOTI_ID, watchNoti());
+            lastQuery = System.currentTimeMillis() - 5_000;
+            kick();
+            return START_STICKY;
+        }
+        // 기본: 세션 시작 (재시작된 경우엔 남은 세션 이어서)
+        if (metaFile(this).exists()) startSessionUi();
+        else if (watchEnabled(this)) { startForeground(NOTI_ID, watchNoti()); kick(); }
+        else { stopSelf(); return START_NOT_STICKY; }
+        return START_STICKY;
+    }
+
+    private void kick() { h.removeCallbacks(tick); h.post(tick); }
+
+    /** 세션 화면 요소(알림·HUD·화면 유지) 시작 */
+    private void startSessionUi() {
+        inSession = true;
+        leftAt = 0;
         start = readStart(this);
         startForeground(NOTI_ID, buildNoti());
-        h.removeCallbacksAndMessages(null);
         ticks = 0;
         try {
             JSONObject meta = new JSONObject(readAll(metaFile(this)));
+            sessionPkg = meta.optString("pkg");
             breakMin = meta.optInt("breakMin", 0);
             nextBreak = breakMin > 0 ? start + breakMin * 60_000L : Long.MAX_VALUE;
             if (meta.optBoolean("keepScreen") && keepView == null && Hud.canShow(this)) addKeepScreen();
         } catch (Exception ignored) {}
-        if (hud == null && getSharedPreferences("gb", MODE_PRIVATE).getBoolean("hud", false) && Hud.canShow(this)) {
+        if (hud == null && prefs(this).getBoolean("hud", false) && Hud.canShow(this)) {
             String label = "게임";
             try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
-            hud = new Hud(this, label, start, () -> endAndOpen(true));
-            // 게임이 뜬 뒤에 보이도록 살짝 늦게
-            h.postDelayed(() -> { if (hud != null) hud.show(); }, 1500);
+            hud = new Hud(this, label, start, () -> endSession(true, false));
+            h.postDelayed(() -> { if (hud != null) hud.show(); }, 1500); // 게임이 뜬 뒤에 보이도록
         }
-        h.post(tick);
-        return START_STICKY;
+        kick();
     }
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (!metaFile(SessionService.this).exists()) { closeHud(); stopForeground(true); stopSelf(); return; }
-            if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
-            ticks++;
-            if (hud != null) hud.update();
-            long now = System.currentTimeMillis();
-            if (now >= nextBreak) {
-                int played = (int) ((now - start) / 60_000);
-                GameMode.breakNotice(SessionService.this, played);
-                if (hud != null) hud.flash("⏰ " + played + "분 했어요 — 잠깐 쉬어가세요");
-                nextBreak += breakMin * 60_000L;
+            boolean watching = watchEnabled(SessionService.this);
+            if (inSession && !metaFile(SessionService.this).exists()) { closeSessionUi(); afterSession(); return; }
+            if (watching) updateForeground();
+
+            if (inSession) {
+                if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
+                ticks++;
+                if (hud != null) hud.update();
+                long now = System.currentTimeMillis();
+                if (now >= nextBreak) {
+                    int played = (int) ((now - start) / 60_000);
+                    GameMode.breakNotice(SessionService.this, played);
+                    if (hud != null) hud.flash("⏰ " + played + "분 했어요 — 잠깐 쉬어가세요");
+                    nextBreak += breakMin * 60_000L;
+                }
+                // 자동 감지: 게임을 떠나 다른 앱(게임부스터 제외)으로 간 지 8초 지나면 종료
+                if (watching && fgPkg != null && sessionPkg != null) {
+                    boolean inGame = fgPkg.equals(sessionPkg);
+                    boolean inMe = fgPkg.equals(getPackageName());
+                    if (inGame || inMe) leftAt = 0;
+                    else if (leftAt == 0) leftAt = now;
+                    else if (now - leftAt >= LEAVE_MS) { endSession(false, true); return; }
+                }
+                if (now - start > MAX_MS) { endSession(false, true); return; }
+                h.postDelayed(this, HUD_MS);
+                return;
             }
-            if (System.currentTimeMillis() - start > MAX_MS) { endAndOpen(false); return; }
-            h.postDelayed(this, HUD_MS);
+
+            if (watching) {
+                // 등록한 게임이 앞에 나오면 세션 자동 시작
+                if (fgPkg != null && isMyGame(fgPkg)) { autoStart(fgPkg); return; }
+                h.postDelayed(this, 3_000);
+                return;
+            }
+            stopAll();
         }
     };
+
+    /** 사용 기록으로 지금 맨 앞 앱을 갱신 */
+    private void updateForeground() {
+        try {
+            UsageStatsManager um = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+            long now = System.currentTimeMillis();
+            UsageEvents ev = um.queryEvents(lastQuery, now);
+            UsageEvents.Event e = new UsageEvents.Event();
+            while (ev.hasNextEvent()) {
+                ev.getNextEvent(e);
+                if (e.getEventType() == UsageEvents.Event.ACTIVITY_RESUMED) fgPkg = e.getPackageName();
+            }
+            lastQuery = now;
+        } catch (Exception ignored) {}
+    }
+
+    private boolean isMyGame(String pkg) {
+        java.util.Set<String> g = prefs(this).getStringSet("games", null);
+        return g != null && g.contains(pkg);
+    }
+
+    private void autoStart(String pkg) {
+        String label = pkg;
+        try { label = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString(); }
+        catch (Exception ignored) {}
+        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        if (prepare(this, pkg, label, false, mi.availMem, mi.availMem, prefs(this).getBoolean("record", true))) startSessionUi();
+        else h.postDelayed(tick, 3_000);
+    }
+
+    /** 세션 종료. open: 게임부스터 열기, notify: 리포트 알림 */
+    private void endSession(boolean open, boolean notify) {
+        closeSessionUi();
+        JSONObject rep = finish(this); // 리포트 저장 (pendingReport 설정) + 설정 복원
+        if (rep != null && notify && !open) reportNoti(rep);
+        if (open) {
+            try {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            } catch (Exception ignored) {}
+        }
+        afterSession();
+    }
+
+    private void closeSessionUi() {
+        inSession = false;
+        sessionPkg = null;
+        h.removeCallbacks(tick);
+        if (hud != null) { hud.hide(); hud = null; }
+        if (keepView != null) {
+            try { ((android.view.WindowManager) getSystemService(WINDOW_SERVICE)).removeView(keepView); } catch (Exception ignored) {}
+            keepView = null;
+        }
+    }
+
+    /** 세션이 끝난 뒤: 감시 모드면 계속 감시, 아니면 멈춤 */
+    private void afterSession() {
+        if (watchEnabled(this)) {
+            fgPkg = getPackageName();   // 방금 끝난 게임을 바로 다시 잡지 않도록
+            startForeground(NOTI_ID, watchNoti());
+            h.postDelayed(tick, 3_000);
+        } else stopAll();
+    }
+
+    private void stopAll() {
+        closeSessionUi();
+        h.removeCallbacksAndMessages(null);
+        stopForeground(true);
+        stopSelf();
+    }
+
+    // ---------- 알림 ----------
+
+    private PendingIntent openApp(int req) {
+        return PendingIntent.getActivity(this, req,
+                new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
 
     private Notification buildNoti() {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.createNotificationChannel(new NotificationChannel(CH, "게임 기록", NotificationManager.IMPORTANCE_LOW));
         String label = "게임";
         try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
-        PendingIntent open = PendingIntent.getActivity(this, 2,
-                new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent stop = PendingIntent.getService(this, 3,
                 new Intent(this, SessionService.class).setAction(ACTION_STOP).putExtra("open", true),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        boolean rec = recording();
         return new Notification.Builder(this, CH)
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
-                .setContentTitle(label + (recording() ? " 기록 중" : " 게임 모드 켜짐"))
-                .setContentText(recording() ? "온도·배터리를 기록하고 있어요. 게임부스터로 돌아오면 리포트가 나와요"
-                        : "게임부스터로 돌아오면 설정이 원래대로 돌아와요")
+                .setContentTitle(label + (rec ? " 기록 중" : " 게임 모드 켜짐"))
+                .setContentText(rec ? "게임을 끝내면 리포트가 나와요" : "게임을 끝내면 설정이 원래대로 돌아와요")
                 .setOngoing(true)
-                .setContentIntent(open)
-                .addAction(new Notification.Action.Builder(null, recording() ? "기록 끝내기" : "게임 모드 끝내기", stop).build())
+                .setContentIntent(openApp(2))
+                .addAction(new Notification.Action.Builder(null, rec ? "기록 끝내기" : "게임 모드 끝내기", stop).build())
                 .build();
+    }
+
+    private Notification watchNoti() {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.createNotificationChannel(new NotificationChannel(CH_WATCH, "게임 자동 감지", NotificationManager.IMPORTANCE_MIN));
+        return new Notification.Builder(this, CH_WATCH)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("게임 자동 감지 중")
+                .setContentText("등록한 게임을 켜면 게임 모드·HUD·기록이 자동으로 시작돼요")
+                .setOngoing(true)
+                .setContentIntent(openApp(4))
+                .build();
+    }
+
+    private void reportNoti(JSONObject rep) {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            nm.createNotificationChannel(new NotificationChannel(CH_REPORT, "게임 리포트", NotificationManager.IMPORTANCE_DEFAULT));
+            long d = rep.optLong("duration");
+            String dur = d >= 3600 ? (d / 3600) + "시간 " + (d / 60 % 60) + "분" : (d / 60) + "분";
+            Notification n = new Notification.Builder(this, CH_REPORT)
+                    .setSmallIcon(android.R.drawable.ic_menu_info_details)
+                    .setContentTitle(rep.optString("label") + " 리포트가 준비됐어요")
+                    .setContentText(dur + " · 최고 " + String.format(java.util.Locale.US, "%.1f", rep.optDouble("tMax")) + "℃ · 눌러서 보기")
+                    .setContentIntent(openApp(5))
+                    .setAutoCancel(true)
+                    .build();
+            nm.notify(99, n);
+        } catch (Exception ignored) {}
     }
 
     private boolean recording() {
@@ -149,15 +353,7 @@ public class SessionService extends Service {
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
-    @Override public void onDestroy() { h.removeCallbacksAndMessages(null); closeHud(); super.onDestroy(); }
-
-    private void closeHud() {
-        if (hud != null) { hud.hide(); hud = null; }
-        if (keepView != null) {
-            try { ((android.view.WindowManager) getSystemService(WINDOW_SERVICE)).removeView(keepView); } catch (Exception ignored) {}
-            keepView = null;
-        }
-    }
+    @Override public void onDestroy() { h.removeCallbacksAndMessages(null); closeSessionUi(); super.onDestroy(); }
 
     /** 1픽셀 투명 창으로 화면이 꺼지지 않게 유지 */
     private void addKeepScreen() {
@@ -173,21 +369,6 @@ public class SessionService extends Service {
             lp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
             wm.addView(keepView, lp);
         } catch (Exception e) { keepView = null; }
-    }
-
-    /** 기록을 끝내고, open이면 게임부스터를 열어 리포트를 보여준다 */
-    private void endAndOpen(boolean open) {
-        h.removeCallbacksAndMessages(null);
-        closeHud();
-        finish(this); // 리포트 저장 (pendingReport 설정)
-        stopForeground(true);
-        stopSelf();
-        if (open) {
-            try {
-                startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-            } catch (Exception ignored) {}
-        }
     }
 
     // ---------- 기록 ----------

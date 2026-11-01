@@ -66,6 +66,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(installReceiver, f, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(installReceiver, f);
         Updater.schedule(this);
+        SessionService.ensureWatching(this);
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
                 && !prefs.getBoolean("askedNotif", false)) {
@@ -119,7 +120,7 @@ public class MainActivity extends Activity {
         if (SessionService.isRecording(this)) {
             new Thread(() -> {
                 JSONObject rep = SessionService.finish(MainActivity.this);
-                try { stopService(new Intent(MainActivity.this, SessionService.class)); } catch (Exception ignored) {}
+                try { startService(new Intent(MainActivity.this, SessionService.class).setAction(SessionService.ACTION_ENDED)); } catch (Exception ignored) {}
                 if (rep != null) {
                     prefs.edit().remove("pendingReport").apply();
                     callJs("onSessionReport", rep.toString());
@@ -557,6 +558,30 @@ public class MainActivity extends Activity {
                             android.net.Uri.parse("package:" + getPackageName())));
                 } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
             });
+        }
+
+        /** 자동 감지: 켜짐 = 설정 + 권한 */
+        @JavascriptInterface
+        public boolean getAutoDetect() { return SessionService.watchEnabled(MainActivity.this); }
+
+        /** 반환: "ok" / "permission"(사용 정보 접근 화면을 열었음) */
+        @JavascriptInterface
+        public String setAutoDetect(boolean on) {
+            if (on && !SessionService.hasUsageAccess(MainActivity.this)) {
+                runOnUiThread(() -> {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS,
+                                android.net.Uri.parse("package:" + getPackageName())));
+                    } catch (Exception e) {
+                        try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); }
+                        catch (Exception e2) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+                    }
+                });
+                return "permission";
+            }
+            prefs.edit().putBoolean("autoDetect", on).apply();
+            if (on) SessionService.ensureWatching(MainActivity.this); else SessionService.stopWatching(MainActivity.this);
+            return "ok";
         }
 
         @JavascriptInterface
