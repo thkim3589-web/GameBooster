@@ -35,12 +35,15 @@ public class SessionService extends Service {
     static final String ACTION_STOP = "com.thkim.gamebooster.SESSION_STOP";
     private static final String CH = "session";
     private static final int NOTI_ID = 77;
-    private static final long INTERVAL_MS = 10_000;
+    private static final long INTERVAL_MS = 10_000;  // 기록 간격
+    private static final long HUD_MS = 2_000;        // HUD 갱신 간격
     private static final long MAX_MS = 4L * 60 * 60 * 1000; // 최대 4시간
     static final long MIN_SEC = 30;                            // 30초 미만은 버림
 
     private final Handler h = new Handler(Looper.getMainLooper());
     private long start;
+    private Hud hud;
+    private int ticks;
 
     static File metaFile(Context c) { return new File(c.getFilesDir(), "session_meta.json"); }
     static File dataFile(Context c) { return new File(c.getFilesDir(), "session_data.csv"); }
@@ -67,30 +70,32 @@ public class SessionService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            h.removeCallbacksAndMessages(null);
-            finish(this); // 리포트 저장
-            stopForeground(true);
-            stopSelf();
+            endAndOpen(intent.getBooleanExtra("open", false));
             return START_NOT_STICKY;
         }
         start = readStart(this);
         startForeground(NOTI_ID, buildNoti());
         h.removeCallbacksAndMessages(null);
+        ticks = 0;
+        if (hud == null && getSharedPreferences("gb", MODE_PRIVATE).getBoolean("hud", false) && Hud.canShow(this)) {
+            String label = "게임";
+            try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
+            hud = new Hud(this, label, start, () -> endAndOpen(true));
+            // 게임이 뜬 뒤에 보이도록 살짝 늦게
+            h.postDelayed(() -> { if (hud != null) hud.show(); }, 1500);
+        }
         h.post(tick);
         return START_STICKY;
     }
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (!metaFile(SessionService.this).exists()) { stopForeground(true); stopSelf(); return; }
-            sample(SessionService.this);
-            if (System.currentTimeMillis() - start > MAX_MS) {
-                finish(SessionService.this);
-                stopForeground(true);
-                stopSelf();
-                return;
-            }
-            h.postDelayed(this, INTERVAL_MS);
+            if (!metaFile(SessionService.this).exists()) { closeHud(); stopForeground(true); stopSelf(); return; }
+            if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
+            ticks++;
+            if (hud != null) hud.update();
+            if (System.currentTimeMillis() - start > MAX_MS) { endAndOpen(false); return; }
+            h.postDelayed(this, HUD_MS);
         }
     };
 
@@ -103,7 +108,7 @@ public class SessionService extends Service {
                 new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent stop = PendingIntent.getService(this, 3,
-                new Intent(this, SessionService.class).setAction(ACTION_STOP),
+                new Intent(this, SessionService.class).setAction(ACTION_STOP).putExtra("open", true),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CH)
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
@@ -117,7 +122,24 @@ public class SessionService extends Service {
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
-    @Override public void onDestroy() { h.removeCallbacksAndMessages(null); super.onDestroy(); }
+    @Override public void onDestroy() { h.removeCallbacksAndMessages(null); closeHud(); super.onDestroy(); }
+
+    private void closeHud() { if (hud != null) { hud.hide(); hud = null; } }
+
+    /** 기록을 끝내고, open이면 게임부스터를 열어 리포트를 보여준다 */
+    private void endAndOpen(boolean open) {
+        h.removeCallbacksAndMessages(null);
+        closeHud();
+        finish(this); // 리포트 저장 (pendingReport 설정)
+        stopForeground(true);
+        stopSelf();
+        if (open) {
+            try {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            } catch (Exception ignored) {}
+        }
+    }
 
     // ---------- 기록 ----------
 

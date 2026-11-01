@@ -494,6 +494,27 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean getRecord() { return prefs.getBoolean("record", true); }
 
+        /** HUD 켜짐 = 설정 켜짐 + 권한 있음 */
+        @JavascriptInterface
+        public boolean getHud() { return prefs.getBoolean("hud", false) && Hud.canShow(MainActivity.this); }
+
+        /** 반환: "ok" / "permission"(권한 화면을 열었음) */
+        @JavascriptInterface
+        public String setHud(boolean on) {
+            if (on && !Hud.canShow(MainActivity.this)) {
+                runOnUiThread(() -> {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:" + getPackageName())));
+                    } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+                });
+                return "permission";
+            }
+            prefs.edit().putBoolean("hud", on).apply();
+            if (on) prefs.edit().putBoolean("record", true).apply(); // HUD는 기록과 함께 동작
+            return "ok";
+        }
+
         @JavascriptInterface
         public void setRecord(boolean on) { prefs.edit().putBoolean("record", on).apply(); }
 
