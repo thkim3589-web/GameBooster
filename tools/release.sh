@@ -8,6 +8,14 @@ echo "$VER" > VERSION
 python3 -c "
 import re;s=open('assets/index.html').read();open('$S/app.js','w').write(re.search(r'<script>(.*)</script>',s,re.S).group(1))"
 node --check $S/app.js
+python3 - <<'PY'
+import re,collections,sys
+css=re.search(r'<style>(.*)</style>',open('assets/index.html').read(),re.S).group(1)
+c=collections.Counter(x.strip() for m in re.finditer(r'(?:^|\})\s*([^{}@]+)\{',css) for x in m.group(1).split(',') if x.strip())
+d=[k for k,v in c.items() if v>1]
+if d: print("CSS 이름 충돌:",d); sys.exit(1)
+print("CSS 충돌 없음")
+PY
 VERSION_CODE=99 VERSION_NAME=$VER OUT=$S/t.apk ./build.sh 2>&1 | grep -v -e "^Picked up" -e "^Note:" | tail -1
 git add -A
 git -c user.name="thkim3589-web" -c user.email="thkim3589@gmail.com" commit -q -m "$MSG
