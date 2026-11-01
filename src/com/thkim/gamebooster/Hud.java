@@ -194,6 +194,17 @@ public class Hud {
         bubble = null;
     }
 
+    private long flashUntil;
+    private String flashMsg;
+
+    /** 잠깐 띄우는 안내 (휴식 알림 등) */
+    void flash(String msg) {
+        flashMsg = msg;
+        flashUntil = System.currentTimeMillis() + 15_000;
+        if (minimized) setMinimized(false);
+        update();
+    }
+
     /** 2초마다 호출 */
     void update() {
         if (panel == null) return;
@@ -239,9 +250,11 @@ public class Hud {
         tvTime.setText(String.format("%02d:%02d:%02d", sec / 3600, sec / 60 % 60, sec % 60));
 
         boolean hot = temp >= 42;
-        tvWarn.setVisibility(hot ? View.VISIBLE : View.GONE);
-        tvWarn.setText("🔥 과열 — 성능이 떨어질 수 있어요");
-        panel.setBackground(bg(BG, hot ? RED : CYAN, dp(16)));
+        boolean fl = System.currentTimeMillis() < flashUntil;
+        tvWarn.setVisibility(hot || fl ? View.VISIBLE : View.GONE);
+        tvWarn.setText(fl ? flashMsg : "🔥 과열 — 성능이 떨어질 수 있어요");
+        tvWarn.setTextColor(fl ? 0xFFFACC15 : RED);
+        panel.setBackground(bg(BG, fl ? 0xFFFACC15 : hot ? RED : CYAN, dp(16)));
 
         bTemp.setText(String.format("%.0f°", temp));
         bTemp.setTextColor(tColor);

@@ -56,6 +56,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .tip:first-of-type{border-top:0}
 .tip .ic{font-size:24px;width:32px;text-align:center}
 .tip .t{flex:1}
+.advice .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:15px;font-weight:700;color:var(--text)}
 .tip .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:16px;font-weight:700}
 .badge{display:inline-block;font-size:15px;font-weight:800;padding:3px 10px;border-radius:20px}
 .ok{background:rgba(74,222,128,.15);color:var(--green)}
@@ -69,6 +70,17 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .game .nm{font-size:15px;margin-top:6px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .game .del{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;display:none}
 .editing .game .del{display:block}
+.game .gear{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:16px;line-height:1}
+.game .gear.own{color:var(--cyan);border-color:var(--cyan)}
+.optgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.opt{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;font-weight:700;font-size:16px;color:var(--sub)}
+.opt .oi{font-size:26px;display:block;margin-bottom:4px}
+.opt.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
+.seg{display:flex;gap:6px;margin:8px 0 14px}
+.seg button{flex:1;padding:11px 0;border-radius:12px;background:var(--bg);border:2px solid var(--line);color:var(--sub);font-weight:700;font-size:15px}
+.seg button.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
+.mlabel{font-weight:700;margin-top:6px}
+.dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
 
 /* 상태 */
@@ -221,6 +233,8 @@ nav button.on{color:var(--cyan)}
         <label class="sw"><input type="checkbox" id="hudSw" onchange="toggleHud(this)"><span></span></label>
       </div>
     </div>
+    <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')">🎛 기본 게임 모드 설정</button>
+    <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 ⚙를 누르세요</div>
     <h3 style="margin:18px 2px 10px;font-size:19px">최근 게임 기록</h3>
     <div id="sessList"></div>
   </section>
@@ -283,6 +297,14 @@ nav button.on{color:var(--cyan)}
       <button class="btn" style="flex:1" id="upLater" onclick="closeUpdate()">나중에</button>
       <button class="btn pri" style="flex:2" id="upGo" onclick="startUpdate()">지금 설치</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="modeSheet" onclick="if(event.target===this)closeMode()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px" id="modeTitle">게임 모드</b><div class="sub">게임을 시작하면 켜지고, 끝나면 원래대로 돌아와요</div></div>
+    <div class="bd" id="modeBody"></div>
+    <div class="ft"><button class="btn pri" onclick="saveMode()">저장</button></div>
   </div>
 </div>
 
@@ -391,8 +413,10 @@ function onMyGames(json){
   $('gameEmpty').style.display=list.length?'none':'block';
   $('gameGrid').innerHTML=list.map(g=>`<div class="game" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="playGame(this.dataset.pkg,this.dataset.label)">
      <button class="del" onclick="event.stopPropagation();removeGame('${g.pkg}')">✕</button>
+     <button class="gear ${isOwn(g.pkg)?'own':''}" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="event.stopPropagation();openMode(this.dataset.pkg,this.dataset.label)">⚙</button>
      <img src="data:image/png;base64,${g.icon}"><div class="nm">${esc(g.label)}</div></div>`).join('');
 }
+function isOwn(p){ try{ return N&&N.getGameMode&&JSON.parse(N.getGameMode(p)).mode.own }catch(e){ return false } }
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toggleEdit(){editing=!editing;$('gameGrid').classList.toggle('editing',editing);$('editBtn').textContent=editing?'완료':'편집'}
 function removeGame(p){N.setGame(p,false);loadGames()}
@@ -571,6 +595,40 @@ function onNetCompare(json, silent){
 }
 function loadLastCompare(){ if(N&&N.lastNetCompare){const s=N.lastNetCompare(); if(s&&!$('ncResult').innerHTML) onNetCompare(s)} }
 
+/* ---------- 게임별 모드 ---------- */
+let modePkg=null, modeData=null, modeInfo=null, modeWaitOverlay=false;
+function openMode(pkg,label){
+  if(!N||!N.getGameMode){toast('휴대폰 앱에서만 동작해요');return}
+  modePkg=pkg; modeInfo=JSON.parse(N.getGameMode(pkg)); modeData=Object.assign({dnd:false,keepScreen:false,mediaVol:-1,breakMin:0},modeInfo.mode);
+  $('modeTitle').textContent=pkg==='_default'?'🎛 기본 게임 모드':'⚙ '+label;
+  renderMode(); $('modeSheet').classList.add('on');
+}
+function renderMode(){
+  const d=modeData, isDef=modePkg==='_default', own=isDef||d.own;
+  const opt=(k,icon,txt)=>`<button class="opt ${d[k]?'on':''}" onclick="toggleOpt('${k}')"><span class="oi">${icon}</span>${txt}</button>`;
+  const seg=(k,vals)=>`<div class="seg">${vals.map(([v,t])=>`<button class="${d[k]==v?'on':''}" onclick="modeData.${k}=${v};renderMode()">${t}</button>`).join('')}</div>`;
+  let warn='';
+  if(d.dnd&&!modeInfo.dndGranted) warn+=`<div class="advice" style="margin-top:4px">🔕 방해금지 권한이 없어서 아직 동작하지 않아요. <button class="go" style="margin-left:4px" onclick="N.openDndPermission()">허용하기</button></div>`;
+  if(d.keepScreen&&!modeInfo.overlay) warn+=`<div class="advice" style="margin-top:4px">💡 화면 켜짐 유지는 '다른 앱 위에 표시' 권한이 필요해요. <button class="go" style="margin-left:4px" onclick="modeWaitOverlay=true;N.openOverlayPermission()">허용하기</button></div>`;
+  $('modeBody').innerHTML=(isDef?'':`
+    <div class="row" style="margin:12px 0 4px"><div><div style="font-weight:700">이 게임 전용 설정</div><div class="sub">끄면 기본 게임 모드를 따라가요</div></div>
+      <label class="sw"><input type="checkbox" ${d.own?'checked':''} onchange="modeData.own=this.checked;renderMode()"><span></span></label></div>`)+`
+    <div class="${own?'':'dis'}">
+      <div class="optgrid">${opt('dnd','🔕','방해금지')}${opt('keepScreen','💡','화면 켜짐 유지')}</div>
+      <div class="mlabel">🔊 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
+      <div class="mlabel">⏰ 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
+      ${warn}
+    </div>
+    ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}`;
+}
+function toggleOpt(k){ modeData[k]=!modeData[k]; renderMode() }
+function saveMode(){
+  const m={dnd:!!modeData.dnd,keepScreen:!!modeData.keepScreen,mediaVol:+modeData.mediaVol,breakMin:+modeData.breakMin};
+  if(modePkg!=='_default') m.own=!!modeData.own;
+  N.setGameMode(modePkg,JSON.stringify(m)); closeMode(); toast('저장했어요 — 다음 실행부터 적용돼요'); loadGames();
+}
+function closeMode(){ $('modeSheet').classList.remove('on') }
+
 /* ---------- HUD ---------- */
 let hudWait=false;
 function toggleRec(el){ if(!N) return; N.setRecord(el.checked); if(!el.checked&&$('hudSw').checked){ N.setHud(false); $('hudSw').checked=false; toast('HUD는 기록과 함께 동작해서 같이 꺼졌어요',3000) } }
@@ -671,11 +729,13 @@ function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록�
 window.onAppResume=()=>{
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
+  if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; renderMode() }
   if(hudWait){ hudWait=false; if(N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 내 게임에서 실행하면 떠요') } }
   if(upWaitPerm){ upWaitPerm=false; if($('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{
+  if($('modeSheet').classList.contains('on')){closeMode();return true}
   if($('repSheet').classList.contains('on')){closeReport();return true}
   if($('upSheet').classList.contains('on')){closeUpdate();return true}
   if($('picker').classList.contains('on')){closePicker();return true}

@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
                 if (rep != null) {
                     prefs.edit().remove("pendingReport").apply();
                     callJs("onSessionReport", rep.toString());
-                } else callJs("onSessionShort", "");
+                } else if (SessionService.lastWasRecord) callJs("onSessionShort", "");
             }).start();
         }
     }
@@ -173,7 +173,8 @@ public class MainActivity extends Activity {
         Thread.sleep(1200);
         long after = mem()[1];
         boolean dnd = false;
-        if (prefs.getBoolean("autoDnd", false) && dndGranted()) { setDndInternal(true); dnd = true; }
+        // 게임 실행 때는 게임 모드가 방해금지를 맡음 (끝나면 복원). 부스트 버튼만 누를 땐 예전처럼.
+        if ((keepPkg == null || keepPkg.isEmpty()) && prefs.getBoolean("autoDnd", false) && dndGranted()) { setDndInternal(true); dnd = true; }
         prefs.edit().putLong("lastBoost", System.currentTimeMillis()).apply();
         JSONObject r = new JSONObject();
         r.put("before", before);
@@ -357,6 +358,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setAutoDnd(boolean on) {
             prefs.edit().putBoolean("autoDnd", on).apply();
+            try {  // 기본 게임 모드의 방해금지와 같은 설정
+                JSONObject d = new JSONObject(GameMode.defaults(MainActivity.this).toString());
+                d.put("dnd", on);
+                GameMode.save(MainActivity.this, GameMode.DEFAULT, d);
+            } catch (Exception ignored) {}
         }
 
         @JavascriptInterface
@@ -439,13 +445,12 @@ public class MainActivity extends Activity {
                     if (li == null) { callJs("onLaunchFail", pkg); return; }
                     li.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     boolean rec = prefs.getBoolean("record", true);
-                    if (rec) {
-                        String label = pkg;
-                        try { label = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString(); }
-                        catch (Exception ignored) {}
-                        SessionService.begin(MainActivity.this, pkg, label, boostFirst,
-                                br.optLong("before", memNow), br.optLong("after", memNow));
-                    }
+                    String label = pkg;
+                    try { label = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)).toString(); }
+                    catch (Exception ignored) {}
+                    // 게임 모드는 항상, 기록은 설정에 따라
+                    SessionService.begin(MainActivity.this, pkg, label, boostFirst,
+                            br.optLong("before", memNow), br.optLong("after", memNow), rec);
                     br.put("recording", rec);
                     callJs("onLaunching", br.toString());
                     Thread.sleep(600);
@@ -489,6 +494,39 @@ public class MainActivity extends Activity {
                     if (!String.valueOf(all.getJSONObject(i).optLong("id")).equals(id)) out.put(all.get(i));
                 prefs.edit().putString("sessions", out.toString()).apply();
             } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public String getGameMode(String pkg) {
+            try {
+                JSONObject o = new JSONObject();
+                JSONObject g = GameMode.all(MainActivity.this).optJSONObject(pkg);
+                o.put("mode", pkg.equals(GameMode.DEFAULT) ? GameMode.defaults(MainActivity.this)
+                        : (g != null ? g : new JSONObject(GameMode.defaults(MainActivity.this).toString()).put("own", false)));
+                o.put("defaults", GameMode.defaults(MainActivity.this));
+                o.put("dndGranted", dndGranted());
+                o.put("overlay", Hud.canShow(MainActivity.this));
+                return o.toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void setGameMode(String pkg, String json) {
+            try {
+                JSONObject m = new JSONObject(json);
+                GameMode.save(MainActivity.this, pkg, m);
+                if (pkg.equals(GameMode.DEFAULT)) prefs.edit().putBoolean("autoDnd", m.optBoolean("dnd")).apply();
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public void openOverlayPermission() {
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:" + getPackageName())));
+                } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+            });
         }
 
         @JavascriptInterface

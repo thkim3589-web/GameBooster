@@ -44,14 +44,22 @@ public class SessionService extends Service {
     private long start;
     private Hud hud;
     private int ticks;
+    private android.view.View keepView;   // 화면 켜짐 유지용 투명 점
+    private int breakMin;                 // 휴식 알림 간격(분), 0이면 끔
+    private long nextBreak;
+    static volatile boolean lastWasRecord = true;
 
     static File metaFile(Context c) { return new File(c.getFilesDir(), "session_meta.json"); }
     static File dataFile(Context c) { return new File(c.getFilesDir(), "session_data.csv"); }
 
     /** 게임 실행 직전에 부른다 */
-    static void begin(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter) {
+    static void begin(Context c, String pkg, String label, boolean boosted, long ramBefore, long ramAfter, boolean record) {
         try {
+            JSONObject mode = GameMode.apply(c, pkg);   // 게임별 모드 적용 (끝나면 복원)
             JSONObject m = new JSONObject();
+            m.put("record", record);
+            m.put("keepScreen", mode.optBoolean("keepScreen"));
+            m.put("breakMin", mode.optInt("breakMin", 0));
             m.put("pkg", pkg);
             m.put("label", label);
             m.put("start", System.currentTimeMillis());
@@ -77,6 +85,12 @@ public class SessionService extends Service {
         startForeground(NOTI_ID, buildNoti());
         h.removeCallbacksAndMessages(null);
         ticks = 0;
+        try {
+            JSONObject meta = new JSONObject(readAll(metaFile(this)));
+            breakMin = meta.optInt("breakMin", 0);
+            nextBreak = breakMin > 0 ? start + breakMin * 60_000L : Long.MAX_VALUE;
+            if (meta.optBoolean("keepScreen") && keepView == null && Hud.canShow(this)) addKeepScreen();
+        } catch (Exception ignored) {}
         if (hud == null && getSharedPreferences("gb", MODE_PRIVATE).getBoolean("hud", false) && Hud.canShow(this)) {
             String label = "게임";
             try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
@@ -94,6 +108,13 @@ public class SessionService extends Service {
             if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
             ticks++;
             if (hud != null) hud.update();
+            long now = System.currentTimeMillis();
+            if (now >= nextBreak) {
+                int played = (int) ((now - start) / 60_000);
+                GameMode.breakNotice(SessionService.this, played);
+                if (hud != null) hud.flash("⏰ " + played + "분 했어요 — 잠깐 쉬어가세요");
+                nextBreak += breakMin * 60_000L;
+            }
             if (System.currentTimeMillis() - start > MAX_MS) { endAndOpen(false); return; }
             h.postDelayed(this, HUD_MS);
         }
@@ -112,19 +133,46 @@ public class SessionService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CH)
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
-                .setContentTitle(label + " 기록 중")
-                .setContentText("온도·배터리를 기록하고 있어요. 게임부스터로 돌아오면 리포트가 나와요")
+                .setContentTitle(label + (recording() ? " 기록 중" : " 게임 모드 켜짐"))
+                .setContentText(recording() ? "온도·배터리를 기록하고 있어요. 게임부스터로 돌아오면 리포트가 나와요"
+                        : "게임부스터로 돌아오면 설정이 원래대로 돌아와요")
                 .setOngoing(true)
                 .setContentIntent(open)
-                .addAction(new Notification.Action.Builder(null, "기록 끝내기", stop).build())
+                .addAction(new Notification.Action.Builder(null, recording() ? "기록 끝내기" : "게임 모드 끝내기", stop).build())
                 .build();
+    }
+
+    private boolean recording() {
+        try { return new JSONObject(readAll(metaFile(this))).optBoolean("record", true); } catch (Exception e) { return true; }
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public void onDestroy() { h.removeCallbacksAndMessages(null); closeHud(); super.onDestroy(); }
 
-    private void closeHud() { if (hud != null) { hud.hide(); hud = null; } }
+    private void closeHud() {
+        if (hud != null) { hud.hide(); hud = null; }
+        if (keepView != null) {
+            try { ((android.view.WindowManager) getSystemService(WINDOW_SERVICE)).removeView(keepView); } catch (Exception ignored) {}
+            keepView = null;
+        }
+    }
+
+    /** 1픽셀 투명 창으로 화면이 꺼지지 않게 유지 */
+    private void addKeepScreen() {
+        try {
+            android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+            keepView = new android.view.View(this);
+            android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams(1, 1,
+                    android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                    android.graphics.PixelFormat.TRANSPARENT);
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+            wm.addView(keepView, lp);
+        } catch (Exception e) { keepView = null; }
+    }
 
     /** 기록을 끝내고, open이면 게임부스터를 열어 리포트를 보여준다 */
     private void endAndOpen(boolean open) {
@@ -182,11 +230,14 @@ public class SessionService extends Service {
      * 앱으로 돌아왔을 때(MainActivity) 또는 알림에서 끝낼 때 부른다.
      */
     static synchronized JSONObject finish(Context c) {
+        GameMode.restore(c);   // 방해금지·볼륨 원래대로
         File mf = metaFile(c);
         if (!mf.exists()) return null;
         try {
             sample(c); // 마지막 값
             JSONObject meta = new JSONObject(readAll(mf));
+            lastWasRecord = meta.optBoolean("record", true);
+            if (!lastWasRecord) { mf.delete(); dataFile(c).delete(); return null; }
             List<double[]> rows = new ArrayList<>();
             File df = dataFile(c);
             if (df.exists()) for (String line : readAll(df).split("\n")) {
