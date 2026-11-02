@@ -46,7 +46,7 @@ public class SessionService extends Service {
     private static final int NOTI_ID = 77;
     private static final long INTERVAL_MS = 10_000;  // 기록 간격
     private static final long HUD_MS = 2_000;        // 틱 간격
-    private static final long LEAVE_MS = 8_000;      // 게임을 떠나고 이만큼 지나면 종료
+    private static final long LEAVE_MS = 90_000;     // 게임을 떠나고 이만큼 지나면 종료 (로그인·결제 화면에 다녀올 여유)
     private static final long MAX_MS = 4L * 60 * 60 * 1000; // 최대 4시간
     static final long MIN_SEC = 30;                            // 30초 미만은 버림
 
@@ -191,6 +191,10 @@ public class SessionService extends Service {
         }
         inSession = true;
         leftAt = 0;
+        if (!watchEnabled(this)) {   // 감시 중이 아니었으면 이전 판의 앞 화면 정보를 버림
+            fgPkg = null;
+            lastQuery = System.currentTimeMillis() - 5_000;
+        }
         heatArmed = true; batArmed = true;
         ticks = 0;
         try {
@@ -231,7 +235,9 @@ public class SessionService extends Service {
         @Override public void run() {
             boolean watching = watchEnabled(SessionService.this);
             if (inSession && !metaFile(SessionService.this).exists()) { closeSessionUi(); afterSession(); return; }
-            if (watching) updateForeground();
+            // 사용 정보 권한이 있으면 자동 감지가 꺼져 있어도 게임을 떠난 것을 알아챔
+            boolean canSee = watching || (inSession && hasUsageAccess(SessionService.this));
+            if (canSee) updateForeground();
 
             if (inSession) {
                 if (ticks % (INTERVAL_MS / HUD_MS) == 0) sample(SessionService.this);
@@ -245,8 +251,8 @@ public class SessionService extends Service {
                     if (hud != null) hud.flash(played + "분 했어요 — 잠깐 쉬어가세요");
                     nextBreak += breakMin * 60_000L;
                 }
-                // 자동 감지: 게임을 떠나 다른 앱(게임부스터 제외)으로 간 지 8초 지나면 종료
-                if (watching && fgPkg != null && sessionPkg != null) {
+                // 게임을 떠나 다른 앱(게임부스터 제외)으로 간 지 LEAVE_MS 지나면 종료
+                if (canSee && fgPkg != null && sessionPkg != null) {
                     boolean inGame = fgPkg.equals(sessionPkg);
                     boolean inMe = fgPkg.equals(getPackageName());
                     if (inGame || inMe) leftAt = 0;

@@ -783,7 +783,7 @@ const PERMS=[
   {k:'notif',i:'bell',n:'알림',w:'업데이트·게임 리포트·휴식 알림을 받아요',req:true},
   {k:'dnd',i:'belloff',n:'방해금지 제어',w:'게임하는 동안 알림·전화를 막고, 끝나면 되돌려요',req:true},
   {k:'overlay',i:'overlay',n:'다른 앱 위에 표시',w:'게임 위 HUD와 화면 켜짐 유지에 필요해요',req:true},
-  {k:'usage',i:'chart',n:'사용 정보 접근',w:'홈 화면에서 켠 게임을 자동으로 알아채요',req:false},
+  {k:'usage',i:'chart',n:'사용 정보 접근',w:'게임을 나가면 자동으로 끝내고, 자동 감지를 켜면 홈 화면에서 켠 게임도 알아채요',req:false},
   {k:'install',i:'package',n:'이 앱에서 설치 허용',w:'새 버전을 앱 안에서 바로 설치해요',req:false}];
 function perms(){ if(!N||!N.getPermissions) return null; try{return JSON.parse(N.getPermissions())}catch(e){return null} }
 function renderOnb(){
