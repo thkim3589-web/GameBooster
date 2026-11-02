@@ -754,6 +754,7 @@ function onUpdateReturn(){
 }
 function onUpdateError(msg){
   resetUpSheet(); toast(msg,4500);
+  if(msg!=='설치를 취소했어요') $('upGo').textContent='다시 설치';   // 실패했을 때만
   $('upProgWrap').style.display='block'; $('upStage').textContent=msg;
 }
 
