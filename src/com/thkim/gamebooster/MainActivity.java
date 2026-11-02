@@ -116,9 +116,11 @@ public class MainActivity extends Activity {
                 Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
                 if (confirm != null) {
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    try { startActivity(confirm); } catch (Exception e) { callJs("onUpdateError", "설치 화면을 열 수 없어요"); }
-                }
-                callJs("onUpdateStage", "confirm");
+                    try {
+                        startActivity(confirm);
+                        callJs("onUpdateStage", "confirm");
+                    } catch (Exception e) { callJs("onUpdateError", "설치 화면을 열 수 없어요"); }
+                } else callJs("onUpdateError", "설치 화면을 열 수 없어요");
             } else if (st != android.content.pm.PackageInstaller.STATUS_SUCCESS) {
                 String msg = i.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
                 if (st == android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED) msg = "설치를 취소했어요";

@@ -684,7 +684,7 @@ function onPing(json){
 }
 
 /* ---------- 업데이트 ---------- */
-let upInfo=null, upBusy=false, upManual=false, upWaitPerm=false, lastCheck=0;
+let upConfirm=false, upInfo=null, upBusy=false, upManual=false, upWaitPerm=false, lastCheck=0;
 function ver(){ if(!N||!N.getVersion) return null; try{return JSON.parse(N.getVersion())}catch(e){return null} }
 function checkUpdate(manual){
   if(!N||!N.checkUpdate) return;
@@ -726,7 +726,7 @@ function openUpdate(){
   $('upSheet').classList.add('on');
 }
 function resetUpSheet(){
-  upBusy=false; $('upProgWrap').style.display='none'; $('upProg').style.width='0';
+  upBusy=false; upConfirm=false; $('upProgWrap').style.display='none'; $('upProg').style.width='0';
   $('upGo').disabled=false; $('upGo').textContent='지금 설치'; $('upLater').disabled=false;
 }
 function closeUpdate(){ if(upBusy) return; $('upSheet').classList.remove('on') }
@@ -743,8 +743,14 @@ function startUpdate(){
 }
 function onUpdateProgress(p){ $('upProg').style.width=p+'%'; $('upStage').textContent='다운로드 중… '+p+'%' }
 function onUpdateStage(s){
-  if(s==='installing'){ $('upProg').style.width='100%'; $('upStage').textContent='설치 준비 중…' }
-  if(s==='confirm'){ $('upStage').textContent='설치 화면에서 "업데이트"를 눌러 주세요'; upBusy=false; $('upLater').disabled=false; $('upGo').disabled=false; $('upGo').textContent='다시 설치' }
+  if(s==='installing'&&!upConfirm){ $('upProg').style.width='100%'; $('upStage').textContent='설치 준비 중…' }
+  if(s==='confirm'){ upConfirm=true; $('upStage').textContent='설치 화면에서 "업데이트"를 눌러 주세요'; $('upGo').textContent='설치 진행 중…' }
+}
+/* 설치 화면에서 돌아왔는데 아직 이 앱이 살아 있으면: 끝내지 않은 것이므로 다시 열 수 있게 */
+function onUpdateReturn(){
+  if(!upConfirm) return;
+  upConfirm=false; upBusy=false; $('upLater').disabled=false; $('upGo').disabled=false;
+  $('upGo').textContent='설치 화면 다시 열기'; $('upStage').textContent='아직 설치가 끝나지 않았어요';
 }
 function onUpdateError(msg){
   resetUpSheet(); toast(msg,4500);
@@ -1275,7 +1281,7 @@ function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록�
 window.onAppResume=()=>{
   $('overlay').classList.remove('on');   // 게임에서 돌아왔을 때 실행 안내가 남지 않게
   if($('onb').classList.contains('on')) renderOnb();
-  renderPermSub(); renderUsageHint();
+  onUpdateReturn(); renderPermSub(); renderUsageHint();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
   if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; modeInfo.vpn=i.vpn; renderMode() }
