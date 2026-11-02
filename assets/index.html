@@ -6,198 +6,212 @@
 <title>게임부스터</title>
 <style>
 :root{
-  --bg:#0B1220;--card:#131C2E;--card2:#1A2540;--line:#24314F;
+  --bg:#080C14;--card:#101726;--card2:#17223B;--line:#1E2B4A;
   --text:#F1F5F9;--sub:#94A3B8;--cyan:#22D3EE;--yellow:#FACC15;
   --green:#4ADE80;--orange:#FB923C;--red:#F87171;--violet:#A78BFA;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;font-size:18px;line-height:1.45}
-header{padding:18px 18px 6px;display:flex;align-items:center;gap:10px}
+header{padding:20px 20px 8px;display:flex;align-items:center;gap:12px}
 header h1{font-size:24px;margin:0;font-weight:800;letter-spacing:-.5px}
 header h1 b{color:var(--yellow)}
 main{padding:6px 16px 110px}
 .tab{display:none}.tab.on{display:block}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);backdrop-filter:blur(8px)}
 .card h3{margin:0 0 10px;font-size:19px}
-.sub{color:var(--sub);font-size:16px}
+.sub{color:var(--sub);font-size:15px}
 button{font:inherit;color:inherit;border:0;cursor:pointer}
-.btn{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:18px;font-weight:700;width:100%}
-.btn.pri{background:var(--cyan);color:#06202A;border:0}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font-size:18px;font-weight:700;width:100%;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.pri{background:linear-gradient(135deg,#22D3EE,#0891B2);color:#04151B;border:0;box-shadow:0 4px 20px rgba(34,211,238,.3)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.row+.row{margin-top:12px}
+.row+.row{margin-top:14px}
 
 /* 부스트 링 */
-.ringwrap{display:flex;flex-direction:column;align-items:center;padding:8px 0 4px}
+.ringwrap{display:flex;flex-direction:column;align-items:center;padding:10px 0 6px}
 .ring{position:relative;width:250px;height:250px}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .boostBtn{width:176px;height:176px;border-radius:50%;
   background:radial-gradient(circle at 35% 30%,#3EE7FF,#0891B2);color:#04151B;
-  font-size:30px;font-weight:900;box-shadow:0 0 40px rgba(34,211,238,.35);
+  font-size:30px;font-weight:900;box-shadow:0 0 50px rgba(34,211,238,.4);
   display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .15s}
 .boostBtn:active{transform:scale(.95)}
-.boostBtn small{font-size:16px;font-weight:700;opacity:.8;margin-top:2px}
+.boostBtn small{font-size:16px;font-weight:700;opacity:.85;margin-top:2px}
 .boostBtn.busy{animation:pulse 1s infinite}
-@keyframes pulse{50%{box-shadow:0 0 70px rgba(250,204,21,.6)}}
-.ramtxt{margin-top:12px;font-size:19px;font-weight:700}
+@keyframes pulse{50%{box-shadow:0 0 80px rgba(250,204,21,.7)}}
+.ramtxt{margin-top:14px;font-size:19px;font-weight:700}
 .result{text-align:center;font-size:18px;min-height:28px;margin-top:6px}
 .result b{color:var(--green)}
 
 /* 스위치 */
 .sw{position:relative;width:58px;height:34px;flex:none}
 .sw input{display:none}
-.sw span{position:absolute;inset:0;background:#334155;border-radius:34px;transition:.2s}
-.sw span:before{content:"";position:absolute;width:26px;height:26px;left:4px;top:4px;background:#fff;border-radius:50%;transition:.2s}
-.sw input:checked+span{background:var(--cyan)}
+.sw span{position:absolute;inset:0;background:#1E293B;border-radius:34px;transition:.2s;border:1px solid var(--line)}
+.sw span:before{content:"";position:absolute;width:26px;height:26px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
+.sw input:checked+span{background:var(--cyan);border-color:var(--cyan)}
 .sw input:checked+span:before{transform:translateX(24px)}
 
-.tip{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+/* 점검 아이콘 SVG */
+.tip{display:flex;gap:14px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
 .tip:first-of-type{border-top:0}
-.tip .ic{font-size:24px;width:32px;text-align:center}
+.tip .ic{width:38px;height:38px;background:var(--card2);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);flex:none;color:var(--cyan)}
+.tip .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tip .t{flex:1}
-.advice .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:15px;font-weight:700;color:var(--text)}
-.tip .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:16px;font-weight:700}
-.badge{display:inline-block;font-size:15px;font-weight:800;padding:3px 10px;border-radius:20px}
+.tip .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700}
+.badge{display:inline-block;font-size:14px;font-weight:800;padding:3px 10px;border-radius:20px}
 .ok{background:rgba(74,222,128,.15);color:var(--green)}
 .warn{background:rgba(251,146,60,.15);color:var(--orange)}
 .bad{background:rgba(248,113,113,.15);color:var(--red)}
 
-/* 게임 */
+/* 게임 그리드 */
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.game{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 6px 12px;text-align:center;position:relative}
+.game{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 8px 12px;text-align:center;position:relative;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .game img{width:60px;height:60px;border-radius:14px}
 .game .nm{font-size:15px;margin-top:6px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.game .del{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;display:none}
+.game .del{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;display:none;box-shadow:0 2px 8px rgba(248,113,113,0.4)}
 .editing .game .del{display:block}
-.game .gear{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:16px;line-height:1}
+.game .gear{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:15px;line-height:1}
 .game .gear.own{color:var(--cyan);border-color:var(--cyan)}
 .optgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
-.opt{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;font-weight:700;font-size:16px;color:var(--sub)}
-.opt .oi{font-size:26px;display:block;margin-bottom:4px}
+.opt{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;font-weight:700;font-size:16px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:6px}
+.opt svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2}
 .opt.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
 .seg{display:flex;gap:6px;margin:8px 0 14px}
 .seg button{flex:1;padding:11px 0;border-radius:12px;background:var(--bg);border:2px solid var(--line);color:var(--sub);font-weight:700;font-size:15px}
 .seg button.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
-.tier{display:flex;align-items:center;gap:14px;background:var(--bg);border-radius:16px;padding:14px;margin:12px 0}
+.tier{display:flex;align-items:center;gap:14px;background:var(--bg);border-radius:16px;padding:14px;margin:12px 0;border:1px solid var(--line)}
 .tier .bars4{display:flex;align-items:flex-end;gap:4px;height:46px}
 .tier .bars4 i{width:12px;border-radius:3px;background:var(--card2)}
-.gset{display:flex;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
-.gset .gi{font-size:22px;width:28px;text-align:center}
+.gset{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line);align-items:center}
+.gset .gi{width:36px;height:36px;background:var(--card2);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);color:var(--cyan)}
+.gset .gi svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
 .gset .gt{flex:1}
 .gset .gv{font-weight:800;white-space:nowrap}
-/* 처음 안내 */
+
+/* 모달 및 시트 */
 .onb{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;flex-direction:column}
 .onb.on{display:flex}
 .onb .top{padding:26px 20px 10px}
 .onb .top h2{margin:6px 0 4px;font-size:26px}
 .onb .list{flex:1;overflow:auto;padding:4px 16px}
 .prm{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
-.prm .pi{font-size:28px;width:36px;text-align:center}
+.prm .pi{width:36px;height:36px;background:var(--card2);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);color:var(--cyan)}
+.prm .pi svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
 .prm .pt{flex:1}
 .prm .pt b{font-size:17px}
 .prm .tag{font-size:12px;font-weight:800;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
 .prm .ok{color:var(--green);font-weight:800;white-space:nowrap}
-.prm button{background:var(--cyan);color:#04151B;border-radius:12px;padding:10px 12px;font-weight:800;font-size:15px;white-space:nowrap}
-.onb .bot{padding:12px 16px 18px;border-top:1px solid var(--line);display:flex;gap:10px}
-.gstat{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.prm button{background:var(--cyan);color:#04151B;border-radius:12px;padding:10px 14px;font-weight:800;font-size:15px;white-space:nowrap;border:0}
+.onb .bot{padding:14px 16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--card)}
+.gstat{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .sring{position:relative;width:58px;height:58px;flex:none}
 .sring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .sring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px}
-.coach{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:16px;line-height:1.7}
-/* 도구 */
-.tool{position:fixed;inset:0;z-index:60;background:#05080F;display:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.coach{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:14px;padding:14px;margin:10px 0;font-size:16px;line-height:1.7}
+
+/* 도구 및 상태 */
+.tool{position:fixed;inset:0;z-index:60;background:#05080F;display:none;touch-action:none;user-select:none}
 .tool.on{display:block}
 .tool canvas{position:absolute;inset:0;width:100%;height:100%}
-.tool .thd{position:absolute;left:0;right:0;top:0;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;pointer-events:none;transition:opacity .15s}
-.tool.touching .thd{opacity:.12}
-.tool.touching .thd .tbtn{pointer-events:none}
-.tool .thd .info{flex:1;background:rgba(19,28,46,.88);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:15px;line-height:1.6}
-.tool .tbtn{pointer-events:auto;background:rgba(26,37,64,.95);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:800;font-size:16px;color:var(--text)}
-.rx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;transition:background .05s}
+.tool .thd{position:absolute;left:0;right:0;top:0;padding:16px;display:flex;align-items:flex-start;gap:10px;pointer-events:none;transition:opacity .15s}
+.tool .thd .info{flex:1;background:rgba(16,23,38,.9);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:15px;line-height:1.6;backdrop-filter:blur(8px)}
+.tool .tbtn{pointer-events:auto;background:rgba(23,34,59,.95);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:800;font-size:16px;color:var(--text)}
+.rx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
 .rx .big{font-size:44px;font-weight:900}
 .rx .msg{font-size:20px;margin-top:10px;font-weight:700}
 .rx .res{font-size:17px;margin-top:16px;line-height:1.8}
-.ico{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex:none;overflow:visible}
-.big .ico,.oi .ico,nav .i .ico{vertical-align:middle}
-.mlabel{font-weight:700;margin-top:6px}
+.mlabel{font-weight:700;margin-top:8px}
 .dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
 
-/* 상태 */
+/* 상태 카드 */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .stat .k{color:var(--sub);font-size:15px}
-.stat .v{font-size:28px;font-weight:800;margin-top:2px}
+.stat .v{font-size:28px;font-weight:800;margin-top:4px}
 .stat .v small{font-size:16px;font-weight:600;color:var(--sub)}
-.bar{height:10px;background:#0B1220;border-radius:10px;margin-top:8px;overflow:hidden}
+.bar{height:10px;background:#080C14;border-radius:10px;margin-top:10px;overflow:hidden;border:1px solid var(--line)}
 .bar i{display:block;height:100%;border-radius:10px;background:var(--cyan);transition:width .4s}
 .stat.wide{grid-column:span 2}
 
-/* 하단 탭 */
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0E1626;border-top:1px solid var(--line);padding:6px 6px 10px}
-nav button{flex:1;background:none;padding:8px 0;color:var(--sub);font-size:16px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
-nav button .i{font-size:26px;line-height:1}
+/* 하단 탭 바 */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(14,22,38,.95);border-top:1px solid var(--line);padding:8px 8px 12px;backdrop-filter:blur(12px);z-index:40}
+nav button{flex:1;background:none;padding:6px 0;color:var(--sub);font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px;transition:color .2s}
+nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--cyan)}
 
 /* 모달 */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;z-index:45;backdrop-filter:blur(4px)}
 .modal.on{display:flex}
-.sheet{background:var(--card);width:100%;max-height:85vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column}
-.sheet .hd{padding:18px;border-bottom:1px solid var(--line)}
-.sheet .bd{overflow:auto;padding:4px 18px}
-.sheet .ft{padding:14px 18px;border-top:1px solid var(--line)}
-.appRow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.appRow img{width:44px;height:44px;border-radius:10px}
-.appRow .nm{flex:1;font-size:17px}
+.sheet{background:var(--card);width:100%;max-height:85vh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;border-top:1px solid var(--line);box-shadow:0 -10px 40px rgba(0,0,0,0.5)}
+.sheet .hd{padding:20px;border-bottom:1px solid var(--line)}
+.sheet .bd{overflow:auto;padding:8px 20px}
+.sheet .ft{padding:16px 20px;border-top:1px solid var(--line);background:var(--card)}
+.appRow{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.appRow img{width:46px;height:46px;border-radius:12px}
+.appRow .nm{flex:1;font-size:17px;font-weight:600}
 .appRow input{width:26px;height:26px;accent-color:var(--cyan)}
-.search{width:100%;margin-top:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:17px}
+.search{width:100%;margin-top:10px;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:17px}
 
-.overlay{position:fixed;inset:0;background:rgba(11,18,32,.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:20px}
+.overlay{position:fixed;inset:0;background:rgba(8,12,20,.95);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:46;text-align:center;padding:20px;backdrop-filter:blur(10px)}
 .overlay.on{display:flex}
 .overlay .big{font-size:56px}
-.overlay .msg{font-size:22px;font-weight:800;margin-top:10px}
+.overlay .msg{font-size:22px;font-weight:800;margin-top:12px}
+
 /* 네트워크 비교 */
-.ncv{text-align:center;font-weight:800;font-size:19px;margin:14px 0 4px}
-.nccols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.ncc{background:var(--bg);border-radius:14px;padding:12px;border:2px solid transparent}
-.ncc.win{border-color:var(--green)}
+.ncv{text-align:center;font-weight:800;font-size:19px;margin:14px 0 6px}
+.nccols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.ncc{background:var(--bg);border-radius:16px;padding:14px;border:2px solid var(--line)}
+.ncc.win{border-color:var(--green);background:rgba(74,222,128,.04)}
 .ncc .hd2{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:15px;font-weight:700;color:var(--sub)}
-.ncc .hd2 span.lb{white-space:nowrap}
-.ncc .ms{font-size:30px;font-weight:800;margin:2px 0}
+.ncc .ms{font-size:28px;font-weight:800;margin:6px 0}
 .ncc .ms small{font-size:15px;color:var(--sub);font-weight:600}
-.bars{display:flex;align-items:flex-end;gap:3px;height:44px;margin:6px 0}
+.bars{display:flex;align-items:flex-end;gap:3px;height:44px;margin:8px 0}
 .bars i{flex:1;border-radius:3px;min-height:4px}
 .ncc .meta{font-size:14px;color:var(--sub);line-height:1.6}
 .ncspin{display:flex;justify-content:center;padding:18px 0 6px}
 .ncspin div{width:46px;height:46px;border-radius:50%;border:5px solid var(--card2);border-top-color:var(--cyan);animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
 /* 게임 기록 */
-.sess{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.sess{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .sess .l{flex:1;min-width:0}
-.sess .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sess .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.chip{font-size:14px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--card2);color:var(--sub)}
-.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
-.rbox{background:var(--bg);border-radius:14px;padding:12px}
+.sess .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}
+.sess .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);border:1px solid var(--line)}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.rbox{background:var(--bg);border-radius:16px;padding:14px;border:1px solid var(--line)}
 .rbox .k{font-size:14px;color:var(--sub)}
-.rbox .v{font-size:24px;font-weight:800}
+.rbox .v{font-size:24px;font-weight:800;margin-top:2px}
 .rbox .v small{font-size:14px;color:var(--sub);font-weight:600}
-.cmp{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:16px;line-height:1.7}
-.advice{background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.35);border-radius:14px;padding:12px 14px;margin:10px 0 6px;font-size:16px;line-height:1.7}
-.legend{display:flex;gap:16px;font-size:14px;color:var(--sub);margin-top:4px}
+.cmp{background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.3);border-radius:16px;padding:14px 16px;margin:12px 0;font-size:16px;line-height:1.7}
+.advice{background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.3);border-radius:16px;padding:14px 16px;margin:12px 0 6px;font-size:16px;line-height:1.7}
+.legend{display:flex;gap:16px;font-size:14px;color:var(--sub);margin-top:6px}
 .legend i{display:inline-block;width:12px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
-/* 업데이트 */
-.upBanner{display:none;margin:0 16px 10px;padding:14px 16px;border-radius:18px;
-  background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(34,211,238,.16));border:1px solid rgba(250,204,21,.45)}
+
+.upBanner{display:none;margin:0 16px 12px;padding:16px 18px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(250,204,21,.15),rgba(34,211,238,.12));border:1px solid rgba(250,204,21,.4);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
 .upBanner.on{display:block}
 .upBanner .ttl{font-weight:800;font-size:18px}
-.upBanner .btns{display:flex;gap:8px;margin-top:10px}
-.upBanner .btns button{flex:1;padding:11px 0;border-radius:12px;font-weight:800;font-size:16px}
-.notes{white-space:pre-wrap;font-size:16px;line-height:1.6;background:var(--bg);border-radius:12px;padding:12px 14px;margin:6px 0 4px}
-.prog{height:14px;background:var(--bg);border-radius:14px;overflow:hidden;margin-top:12px}
+.upBanner .btns{display:flex;gap:10px;margin-top:12px}
+.upBanner .btns button{flex:1;padding:12px 0;border-radius:14px;font-weight:800;font-size:16px}
+.notes{white-space:pre-wrap;font-size:16px;line-height:1.6;background:var(--bg);border-radius:14px;padding:14px;margin:8px 0 6px;border:1px solid var(--line)}
+.prog{height:14px;background:var(--bg);border-radius:14px;overflow:hidden;margin-top:12px;border:1px solid var(--line)}
 .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--yellow));transition:width .2s}
-.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#1E293B;border:1px solid var(--line);padding:12px 18px;border-radius:14px;font-size:16px;display:none;z-index:40;max-width:90%}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#17223B;border:1px solid var(--line);padding:14px 20px;border-radius:16px;font-size:16px;display:none;z-index:55;max-width:90%;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+
+/* v2.4 기능 유지용 (아이콘·도구) */
+.ico{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex:none;overflow:visible}
+.big .ico,nav .i .ico{vertical-align:middle}
+nav button .i{line-height:0}
+nav button .i .ico{width:22px;height:22px}
+.opt .oi{display:block;line-height:0}
+.btn .ico{margin-right:4px}
+.advice .go{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:15px;font-weight:700;color:var(--text)}
+.tool.touching .thd{opacity:.12}
+.tool.touching .thd .tbtn{pointer-events:none}
+.ncc .hd2 span.lb{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -210,7 +224,7 @@ nav button.on{color:var(--cyan)}
   <div class="ttl"><span data-ic="rocket" style="color:var(--yellow)"></span> 새 버전이 나왔어요</div>
   <div class="sub" id="upBannerSub"></div>
   <div class="btns">
-    <button style="background:var(--card2);border:1px solid var(--line)" onclick="hideBanner()">나중에</button>
+    <button style="background:var(--card2);border:1px solid var(--line);color:var(--text)" onclick="hideBanner()">나중에</button>
     <button style="background:var(--yellow);color:#1A1400" onclick="openUpdate()">업데이트 보기</button>
   </div>
 </div>
@@ -222,7 +236,7 @@ nav button.on{color:var(--cyan)}
       <div class="ringwrap">
         <div class="ring">
           <svg viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="#1E293B" stroke-width="10"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#17223B" stroke-width="10"/>
             <circle id="ringArc" cx="60" cy="60" r="54" fill="none" stroke="#22D3EE" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
           </svg>
           <div class="center">
@@ -940,7 +954,7 @@ function renderReflexBest(){ const b=bestReflex(); if($('reflexBest')) $('reflex
 function openReflex(){ $('reflexTool').classList.add('on'); RX.round=0; RX.times=[]; rxIntro();
   const el=$('rx'); if(!el._bound){ el._bound=true; el.addEventListener('pointerdown',rxTap) } }
 function rxSet(bg,html){ const el=$('rx'); el.style.background=bg; el.innerHTML=html }
-function rxIntro(){ RX.state='intro'; rxSet('#0B1220',`<div class="big" style="color:var(--yellow)">${ic('zap')}</div><div class="msg">반응속도 측정</div><div class="res sub">화면이 <b style="color:var(--green)">초록색</b>으로 바뀌는 순간 최대한 빨리 누르세요.<br>5번 재서 평균을 내요.<br><br><b style="color:var(--text)">화면을 눌러 시작</b></div>`) }
+function rxIntro(){ RX.state='intro'; rxSet('#080C14',`<div class="big" style="color:var(--yellow)">${ic('zap')}</div><div class="msg">반응속도 측정</div><div class="res sub">화면이 <b style="color:var(--green)">초록색</b>으로 바뀌는 순간 최대한 빨리 누르세요.<br>5번 재서 평균을 내요.<br><br><b style="color:var(--text)">화면을 눌러 시작</b></div>`) }
 function rxWait(){ RX.state='wait'; rxSet('#7F1D1D',`<div class="big">${RX.round+1} / 5</div><div class="msg">초록색이 되면 누르세요…</div>`);
   clearTimeout(RX.timer); RX.timer=setTimeout(()=>{ RX.state='go'; RX.shownAt=performance.now(); rxSet('#15803D','<div class="big">지금!</div>') },1500+Math.random()*2500) }
 function rxTap(e){
@@ -950,14 +964,14 @@ function rxTap(e){
   if(RX.state==='early'){ rxWait(); return }
   if(RX.state==='go'){ const ms=Math.round(performance.now()-RX.shownAt); RX.times.push(ms); RX.round++;
     if(RX.round>=5) return rxDone();
-    RX.state='shown'; rxSet('#0B1220',`<div class="big" style="color:var(--cyan)">${ms}<span style="font-size:22px">ms</span></div><div class="msg">${RX.round} / 5</div><div class="res">눌러서 다음</div>`); return }
+    RX.state='shown'; rxSet('#080C14',`<div class="big" style="color:var(--cyan)">${ms}<span style="font-size:22px">ms</span></div><div class="msg">${RX.round} / 5</div><div class="res">눌러서 다음</div>`); return }
   if(RX.state==='shown'){ rxWait() }
 }
 function rxDone(){
   RX.state='done'; const a=Math.round(RX.times.reduce((x,y)=>x+y,0)/RX.times.length), b=Math.min(...RX.times);
   const prev=bestReflex(), isBest=!prev||a<prev; if(isBest){ try{localStorage.setItem('reflexBest',a)}catch(e){} }
   const g=a<200?['아주 빨라요 '+ic('trophy'),'var(--green)']:a<250?['빨라요 '+ic('thumb'),'var(--green)']:a<300?['보통이에요','var(--cyan)']:a<400?['조금 느려요','var(--orange)']:['연습이 필요해요','var(--red)'];
-  rxSet('#0B1220',`<div class="msg">평균 반응속도</div><div class="big" style="color:${g[1]}">${a}<span style="font-size:22px">ms</span></div>
+  rxSet('#080C14',`<div class="msg">평균 반응속도</div><div class="big" style="color:${g[1]}">${a}<span style="font-size:22px">ms</span></div>
     <div class="msg" style="color:${g[1]}">${g[0]}${isBest?' · 새 최고 기록!':''}</div>
     <div class="res">가장 빠름 ${b}ms · ${RX.times.join(' / ')}ms<br><span class="sub">화면·터치 지연이 조금 포함돼요. 보통 사람은 250ms 안팎이에요.</span><br><br><b>눌러서 다시 하기</b></div>`);
   renderReflexBest();
@@ -979,7 +993,7 @@ function gameStats(list){
   return {n,total:durs.reduce((a,b)=>a+b,0),avgDur:avg(durs),tAvg,drain:drains.length?avg(drains):-1,throttled,score,onsets,hotAvg};
 }
 function scoreColor(v){return v>=80?'var(--green)':v>=60?'var(--cyan)':v>=40?'var(--orange)':'var(--red)'}
-function ringSvg(v){const c=2*Math.PI*24;return `<div class="sring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="24" fill="none" stroke="#1E293B" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" stroke="${scoreColor(v)}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-v/100)}"/></svg><b style="color:${scoreColor(v)}">${v}</b></div>`}
+function ringSvg(v){const c=2*Math.PI*24;return `<div class="sring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="24" fill="none" stroke="#17223B" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" stroke="${scoreColor(v)}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-v/100)}"/></svg><b style="color:${scoreColor(v)}">${v}</b></div>`}
 function renderStats(){
   const by={}; sessions.forEach(s=>{(by[s.pkg]=by[s.pkg]||[]).push(s)});
   const games=Object.keys(by).map(k=>({pkg:k,label:by[k][0].label,list:by[k],st:gameStats(by[k])})).sort((a,b)=>b.st.total-a.st.total);
