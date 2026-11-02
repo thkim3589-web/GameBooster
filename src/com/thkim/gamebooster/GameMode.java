@@ -114,6 +114,7 @@ public class GameMode {
                     .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                     .setContentTitle("⏰ " + minutes + "분 동안 게임했어요")
                     .setContentText("눈과 손목을 위해 잠깐 쉬어가세요")
+                    .setCategory(Notification.CATEGORY_ALARM)   // 방해금지(중요 알림만) 중에도 보이도록
                     .setAutoCancel(true)
                     .setTimeoutAfter(60_000)
                     .build();

@@ -66,7 +66,9 @@ public class SessionService extends Service {
     private boolean heatArmed = true, batArmed = true;   // 실시간 경고 (한 번 알리면 회복될 때까지 쉼)
     static final double HEAT_ALERT = 45.0, HEAT_REARM = 42.0;
     static final int BAT_ALERT = 15;
-    static volatile boolean lastWasRecord = true;
+    static volatile boolean lastShort;             // 방금 끝난 판이 30초 미만이라 버려졌음
+    static final long DRAIN_MIN_SEC = 900;          // 시간당 소모를 계산할 최소 시간 (15분)
+    static final int DRAIN_MIN_USED = 2;            // 잔량은 1% 단위라 이만큼은 줄어야 계산
 
     static File metaFile(Context c) { return new File(c.getFilesDir(), "session_meta.json"); }
     static File dataFile(Context c) { return new File(c.getFilesDir(), "session_data.csv"); }
@@ -156,27 +158,40 @@ public class SessionService extends Service {
             return START_STICKY;
         }
         if (ACTION_WATCH.equals(action)) {
-            if (!inSession) startForeground(NOTI_ID, watchNoti());
+            if (!inSession && !goForeground(watchNoti())) { stopSelf(); return START_NOT_STICKY; }
             lastQuery = System.currentTimeMillis() - 5_000;
             kick();
             return START_STICKY;
         }
         // 기본: 세션 시작 (재시작된 경우엔 남은 세션 이어서)
         if (metaFile(this).exists()) startSessionUi();
-        else if (watchEnabled(this)) { startForeground(NOTI_ID, watchNoti()); kick(); }
+        else if (watchEnabled(this)) {
+            if (!goForeground(watchNoti())) { stopSelf(); return START_NOT_STICKY; }
+            kick();
+        }
         else { stopSelf(); return START_NOT_STICKY; }
         return START_STICKY;
+    }
+
+    /** 시스템이 서비스를 되살린 경우 안드로이드 12+는 백그라운드 포그라운드 전환을 막아 예외를 던진다 */
+    private boolean goForeground(Notification n) {
+        try { startForeground(NOTI_ID, n); return true; }
+        catch (Exception e) { return false; }
     }
 
     private void kick() { h.removeCallbacks(tick); h.post(tick); }
 
     /** 세션 화면 요소(알림·HUD·화면 유지) 시작 */
     private void startSessionUi() {
+        start = readStart(this);
+        if (!goForeground(buildNoti())) {   // 이어갈 수 없으면 방해금지·볼륨을 되돌리고 기록을 마무리
+            finish(this);
+            stopSelf();
+            return;
+        }
         inSession = true;
         leftAt = 0;
         heatArmed = true; batArmed = true;
-        start = readStart(this);
-        startForeground(NOTI_ID, buildNoti());
         ticks = 0;
         try {
             JSONObject meta = new JSONObject(readAll(metaFile(this)));
@@ -292,6 +307,7 @@ public class SessionService extends Service {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setStyle(new Notification.BigTextStyle().bigText(text))
+                    .setCategory(Notification.CATEGORY_ALARM)   // 방해금지(중요 알림만) 중에도 보이도록
                     .setAutoCancel(true)
                     .setTimeoutAfter(120_000)
                     .build());
@@ -303,7 +319,7 @@ public class SessionService extends Service {
         try {
             UsageStatsManager um = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
             long now = System.currentTimeMillis();
-            UsageEvents ev = um.queryEvents(lastQuery, now);
+            UsageEvents ev = um.queryEvents(lastQuery > 0 ? lastQuery : now - 10_000, now);   // 처음엔 전체 기록을 읽지 않음
             UsageEvents.Event e = new UsageEvents.Event();
             while (ev.hasNextEvent()) {
                 ev.getNextEvent(e);
@@ -358,7 +374,7 @@ public class SessionService extends Service {
     private void afterSession() {
         if (watchEnabled(this)) {
             fgPkg = getPackageName();   // 방금 끝난 게임을 바로 다시 잡지 않도록
-            startForeground(NOTI_ID, watchNoti());
+            if (!goForeground(watchNoti())) { stopAll(); return; }
             h.postDelayed(tick, 3_000);
         } else stopAll();
     }
@@ -498,6 +514,7 @@ public class SessionService extends Service {
      * 앱으로 돌아왔을 때(MainActivity) 또는 알림에서 끝낼 때 부른다.
      */
     static synchronized JSONObject finish(Context c) {
+        lastShort = false;
         GameMode.restore(c);   // 방해금지·볼륨 원래대로
         boolean adRan = AdBlockVpn.running;
         int adsBlocked = adRan ? AdBlockVpn.blocked.get() : -1;
@@ -517,21 +534,22 @@ public class SessionService extends Service {
         try {
             sample(c); // 마지막 값
             JSONObject meta = new JSONObject(readAll(mf));
-            lastWasRecord = meta.optBoolean("record", true);
-            if (!lastWasRecord) { mf.delete(); dataFile(c).delete(); return null; }
+            if (!meta.optBoolean("record", true)) { mf.delete(); dataFile(c).delete(); return null; }
             List<double[]> rows = new ArrayList<>();
             File df = dataFile(c);
             if (df.exists()) for (String line : readAll(df).split("\n")) {
                 String[] p = line.trim().split(",");
                 if (p.length < 6) continue;
-                double[] r = new double[6];
-                for (int i = 0; i < 6; i++) r[i] = Double.parseDouble(p[i]);
-                rows.add(r);
+                try {   // 강제 종료로 잘린 줄은 건너뜀
+                    double[] r = new double[6];
+                    for (int i = 0; i < 6; i++) r[i] = Double.parseDouble(p[i]);
+                    rows.add(r);
+                } catch (NumberFormatException ignored) {}
             }
             mf.delete();
             df.delete();
             long dur = (System.currentTimeMillis() - meta.getLong("start")) / 1000;
-            if (dur < MIN_SEC || rows.size() < 2) return null;
+            if (dur < MIN_SEC || rows.size() < 2) { lastShort = true; return null; }
 
             double tMax = -99, tSum = 0; int hot = 0, thMax = 0; long ramSum = 0; boolean charged = false;
             for (double[] r : rows) {
@@ -562,7 +580,7 @@ public class SessionService extends Service {
             rep.put("batStart", (int) first[2]);
             rep.put("batEnd", (int) last[2]);
             rep.put("batUsed", used);
-            rep.put("perHour", (!charged && dur >= 300) ? Math.round(used * 3600.0 / dur * 10) / 10.0 : -1);
+            rep.put("perHour", (!charged && dur >= DRAIN_MIN_SEC && used >= DRAIN_MIN_USED) ? Math.round(used * 3600.0 / dur * 10) / 10.0 : -1);
             rep.put("charged", charged);
             rep.put("tStart", first[1]);
             rep.put("tEnd", last[1]);
@@ -591,6 +609,7 @@ public class SessionService extends Service {
             return rep;
         } catch (Exception e) {
             mf.delete();
+            dataFile(c).delete();
             return null;
         }
     }

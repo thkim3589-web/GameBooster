@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private SharedPreferences prefs;
+    private volatile boolean pageReady;   // 화면(index.html) 로딩 완료
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +57,12 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setTextZoom(100);
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView v, String url) {
+                pageReady = true;   // 로딩 중 끝난 판의 리포트도 여기서 보여줌
+                v.evaluateJavascript("window.onAppResume && onAppResume()", null);
+            }
+        });
         web.addJavascriptInterface(new Bridge(), "Native");
         web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
@@ -132,18 +138,30 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (web != null) web.evaluateJavascript("window.onAppResume && onAppResume()", null);
+        if (web != null) {
+            web.onResume();
+            web.resumeTimers();
+            web.evaluateJavascript("window.onAppResume && onAppResume()", null);
+        }
         // 게임하다 돌아오면 기록을 끝내고 리포트 표시
         if (SessionService.isRecording(this)) {
             new Thread(() -> {
                 JSONObject rep = SessionService.finish(MainActivity.this);
                 try { startService(new Intent(MainActivity.this, SessionService.class).setAction(SessionService.ACTION_ENDED)); } catch (Exception ignored) {}
+                if (!pageReady) return;   // 아직 로딩 중이면 pendingReport로 남겨 로딩 후 표시
                 if (rep != null) {
                     prefs.edit().remove("pendingReport").apply();
                     callJs("onSessionReport", rep.toString());
-                } else if (SessionService.lastWasRecord) callJs("onSessionShort", "");
+                } else if (SessionService.lastShort) callJs("onSessionShort", "");
             }).start();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        // 게임하는 동안 앱 화면의 타이머가 돌지 않게 멈춤
+        if (web != null) { web.onPause(); web.pauseTimers(); }
+        super.onPause();
     }
 
     @Override
@@ -350,7 +368,9 @@ public class MainActivity extends Activity {
                 o.put("net", net);
                 o.put("cores", Runtime.getRuntime().availableProcessors());
                 String mf = readFirstLine("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
-                o.put("cpuMaxMhz", mf == null ? 0 : Long.parseLong(mf.trim()) / 1000);
+                long cpuMhz = 0;
+                try { if (mf != null) cpuMhz = Long.parseLong(mf.trim()) / 1000; } catch (NumberFormatException ignored) {}
+                o.put("cpuMaxMhz", cpuMhz);
                 o.put("model", Build.MANUFACTURER + " " + Build.MODEL);
                 o.put("android", Build.VERSION.RELEASE);
                 o.put("dndGranted", dndGranted());
@@ -472,7 +492,16 @@ public class MainActivity extends Activity {
                     br.put("recording", rec);
                     callJs("onLaunching", br.toString());
                     Thread.sleep(600);
-                    runOnUiThread(() -> startActivity(li));
+                    runOnUiThread(() -> {
+                        try { startActivity(li); }
+                        catch (Exception e) {   // 실행 실패: 게임 모드를 되돌리고 안내
+                            new Thread(() -> {
+                                SessionService.finish(MainActivity.this);
+                                try { startService(new Intent(MainActivity.this, SessionService.class).setAction(SessionService.ACTION_ENDED)); } catch (Exception ignored) {}
+                                callJs("onLaunchFail", pkg);
+                            }).start();
+                        }
+                    });
                 } catch (Exception e) {
                     callJs("onLaunchFail", pkg);
                 }

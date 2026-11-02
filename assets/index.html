@@ -610,7 +610,7 @@ function playGame(pkg,label){
 }
 function onLaunching(json){
   const r=JSON.parse(json||'{}'); const f=r.freed?mb(r.freed):0;
-  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 앱 ${r.count||0}개 정리`+(r.recording?'\n기록 시작 — 끝나고 돌아오면 리포트가 나와요':'');
+  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 정리 (앱 ${r.count||0}개 확인)`+(r.recording?'\n기록 시작 — 끝나고 돌아오면 리포트가 나와요':'');
   $('ovSub').style.whiteSpace='pre-line';
   setTimeout(()=>$('overlay').classList.remove('on'),1500);
 }
@@ -1026,7 +1026,7 @@ const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 function gameStats(list){
   const n=list.length, durs=list.map(s=>s.duration);
   const tMaxs=list.map(s=>s.tMax).filter(t=>t>0);
-  const drains=list.filter(s=>s.perHour>=0).map(s=>s.perHour);
+  const drains=list.filter(s=>drainOf(s)>=0).map(s=>s.perHour);
   const throttled=list.filter(s=>s.thermalMax>=3).length;
   const hotAvg=avg(list.map(s=>s.hotMin||0)), tAvg=avg(tMaxs);
   let score=100 - Math.min(30,hotAvg*3) - Math.round(throttled/n*30) - (tAvg>38?Math.min(20,(tAvg-38)*4):0);
@@ -1114,20 +1114,22 @@ function chartSvg(s){
   let hot=''; if(tmax>42){const y=YT(Math.min(tmax,Math.max(42,tmin)));hot=`<rect x="${pl}" y="${pt}" width="${iw}" height="${(y-pt).toFixed(1)}" fill="rgba(248,113,113,.10)"/><text x="${pl+4}" y="${pt+13}" font-size="11" fill="#F87171">42℃ 이상 과열</text>`}
   let grid='';for(let k=0;k<=3;k++){const y=pt+ih*k/3, tv=tmax-(tmax-tmin)*k/3, bv=bmax-(bmax-bmin)*k/3;
     grid+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#24314F"/><text x="${pl-5}" y="${y+4}" font-size="11" fill="#FB923C" text-anchor="end">${tv.toFixed(0)}°</text><text x="${W-pr+5}" y="${y+4}" font-size="11" fill="#22D3EE">${bv.toFixed(0)}%</text>`}
-  const mm=Math.round(T/60);
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${hot}${grid}
     <path d="${line(bt,YB)}" fill="none" stroke="#22D3EE" stroke-width="2.5" stroke-linejoin="round"/>
     <path d="${line(tp,YT)}" fill="none" stroke="#FB923C" stroke-width="2.5" stroke-linejoin="round"/>
-    <text x="${pl}" y="${H-6}" font-size="11" fill="#94A3B8">시작</text><text x="${W-pr}" y="${H-6}" font-size="11" fill="#94A3B8" text-anchor="end">${mm?mm+'분':T+'초'}</text></svg>
+    <text x="${pl}" y="${H-6}" font-size="11" fill="#94A3B8">시작</text><text x="${W-pr}" y="${H-6}" font-size="11" fill="#94A3B8" text-anchor="end">${fmtDur(s.duration||T)}</text></svg>
     <div class="legend"><span><i style="background:#FB923C"></i>배터리 온도</span><span><i style="background:#22D3EE"></i>배터리 잔량</span></div>`;
 }
+/* 시간당 소모: 충전 중이거나 15분 미만, 2% 미만 변화면 믿을 수 없어 계산하지 않음 (옛 기록에도 적용) */
+function drainOf(s){ return (s.charged||!(s.duration>=900)||!(s.batUsed>=2)||!(s.perHour>=0))?-1:s.perHour }
+function drainNote(s){ return s.charged?'충전 중이라 계산 안 함':s.duration<900?'15분 이상 필요':'소모가 적어 계산 안 함' }
 function compareText(s){
   const prev=sessions.find(x=>x.pkg===s.pkg&&x.id<s.id); if(!prev) return '';
   const out=[];
   const dT=Math.round((s.tMax-prev.tMax)*10)/10;
   if(Math.abs(dT)>=0.5) out.push(`최고 온도 ${Math.abs(dT)}℃ ${dT<0?'<b style="color:var(--green)">낮음</b>':'<b style="color:var(--orange)">높음</b>'}`);
   else out.push('최고 온도 비슷함');
-  if(s.perHour>=0&&prev.perHour>=0){const d=Math.round((s.perHour-prev.perHour)*10)/10;
+  if(drainOf(s)>=0&&drainOf(prev)>=0){const d=Math.round((s.perHour-prev.perHour)*10)/10;
     if(Math.abs(d)>=1) out.push(`배터리 소모 시간당 ${Math.abs(d)}% ${d<0?'<b style="color:var(--green)">적음</b>':'<b style="color:var(--orange)">많음</b>'}`);
     else out.push('배터리 소모 비슷함');}
   const dh=Math.round((s.hotMin-prev.hotMin)*10)/10;
@@ -1140,10 +1142,10 @@ function adviceText(s){
   if(s.thermalMax>=3) a.push(ic('flame','var(--orange)')+' 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" onclick="closeReport();openGfx()">그래픽 추천 보기</button>');
   if(s.charged&&s.tMax>=40) a.push(ic('plug','var(--yellow)')+' 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
   if(s.tMax>=42&&!s.charged) a.push(ic('snow','var(--cyan)')+' 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
-  if(s.perHour>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
+  if(drainOf(s)>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
   if(!a.length){
     if(s.charged) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 충전 중 기록이라 배터리 소모는 평가하지 않았어요.');
-    else if(s.perHour<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 플레이 시간이 짧아 배터리 소모는 평가하지 않았어요.');
+    else if(drainOf(s)<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 배터리 소모는 평가하기엔 변화가 작았어요.');
     else a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
   }
   return `<div class="advice">${a.join('<br>')}</div>`;
@@ -1189,7 +1191,7 @@ function openReport(id){
     <div style="margin-top:10px">${chartSvg(s)}</div>
     <div class="rgrid">
       <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>충전 중</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
-      <div class="rbox"><div class="k">시간당 소모</div><div class="v">${s.perHour>=0?s.perHour+'<small>%/h</small>':s.charged?'<small>충전 중이라 계산 안 함</small>':'<small>5분 이상 필요</small>'}</div></div>
+      <div class="rbox"><div class="k">시간당 소모</div><div class="v">${drainOf(s)>=0?s.perHour+'<small>%/h</small>':'<small>'+drainNote(s)+'</small>'}</div></div>
       <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
@@ -1209,14 +1211,15 @@ function onSessionReport(json){
 function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록하지 않았어요',3000) }
 
 window.onAppResume=()=>{
+  $('overlay').classList.remove('on');   // 게임에서 돌아왔을 때 실행 안내가 남지 않게
   if($('onb').classList.contains('on')) renderOnb();
   renderPermSub();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
   if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; modeInfo.vpn=i.vpn; renderMode() }
-  if(autoWait){ autoWait=false; if(N.setAutoDetect(true)==='ok'){ $('autoSw').checked=true; toast('자동 감지 켜짐 — 등록한 게임을 어디서 켜든 자동으로 시작돼요',4000) } }
-  if(hudWait){ hudWait=false; if(N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 내 게임에서 실행하면 떠요') } }
-  if(upWaitPerm){ upWaitPerm=false; if($('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
+  if(autoWait){ autoWait=false; const p=perms(); if(p&&p.usage&&N.setAutoDetect(true)==='ok'){ $('autoSw').checked=true; toast('자동 감지 켜짐 — 등록한 게임을 어디서 켜든 자동으로 시작돼요',4000) } }
+  if(hudWait){ hudWait=false; const p=perms(); if(p&&p.overlay&&N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 내 게임에서 실행하면 떠요') } }
+  if(upWaitPerm){ upWaitPerm=false; const p=perms(); if(p&&p.install&&$('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
 window.onBack=()=>{

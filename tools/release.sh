@@ -3,7 +3,7 @@
 set -e
 cd "$(dirname "$0")/.."
 VER="$1"; MSG="$2"
-S=/tmp/claude-0/-home-claude/01ca1cda-c5fd-52dc-9062-d8d951165915/scratchpad
+S=$(mktemp -d)
 echo "$VER" > VERSION
 python3 -c "
 import re;s=open('assets/index.html').read();open('$S/app.js','w').write(re.search(r'<script>(.*)</script>',s,re.S).group(1))"
@@ -20,8 +20,7 @@ VERSION_CODE=99 VERSION_NAME=$VER OUT=$S/t.apk ./build.sh 2>&1 | grep -v -e "^Pi
 git add -A
 git -c user.name="thkim3589-web" -c user.email="thkim3589@gmail.com" commit -q -m "$MSG
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01KqSBgXYUgWgduTKo4tuMvG"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git push -q origin main 2>&1 | grep -v -e moved -e "^remote: *$" || true
 SHA=$(git rev-parse --short=7 HEAD); echo "pushed $SHA"
 sleep 20
