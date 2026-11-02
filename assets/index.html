@@ -118,6 +118,8 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .rx .big{font-size:44px;font-weight:900}
 .rx .msg{font-size:20px;margin-top:10px;font-weight:700}
 .rx .res{font-size:17px;margin-top:16px;line-height:1.8}
+.ico{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex:none;overflow:visible}
+.big .ico,.oi .ico,nav .i .ico{vertical-align:middle}
 .mlabel{font-weight:700;margin-top:6px}
 .dis{opacity:.4;pointer-events:none}
 .empty{text-align:center;padding:34px 10px;color:var(--sub)}
@@ -205,7 +207,7 @@ nav button.on{color:var(--cyan)}
 </header>
 
 <div class="upBanner" id="upBanner">
-  <div class="ttl">🚀 새 버전이 나왔어요</div>
+  <div class="ttl"><span data-ic="rocket" style="color:var(--yellow)"></span> 새 버전이 나왔어요</div>
   <div class="sub" id="upBannerSub"></div>
   <div class="btns">
     <button style="background:var(--card2);border:1px solid var(--line)" onclick="hideBanner()">나중에</button>
@@ -257,7 +259,7 @@ nav button.on{color:var(--cyan)}
     </div>
     <div class="grid" id="gameGrid"></div>
     <div id="gameEmpty" class="empty" style="display:none">
-      <div style="font-size:48px">🎮</div>
+      <div style="font-size:48px;color:var(--cyan)"><span data-ic="gamepad"></span></div>
       등록된 게임이 없어요.<br>아래 버튼으로 게임을 추가하세요.
     </div>
     <button class="btn pri" style="margin-top:16px" onclick="openPicker()">＋ 게임 추가</button>
@@ -280,8 +282,8 @@ nav button.on{color:var(--cyan)}
         <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
       </div>
     </div>
-    <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')">🎛 기본 게임 모드 설정</button>
-    <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 ⚙를 누르세요</div>
+    <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')"><span data-ic="sliders"></span> 기본 게임 모드 설정</button>
+    <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 <span data-ic="settings"></span> 를 누르세요</div>
     <div id="statWrap" style="display:none">
       <h3 style="margin:18px 2px 10px;font-size:19px">게임별 통계</h3>
       <div id="statList"></div>
@@ -295,16 +297,16 @@ nav button.on{color:var(--cyan)}
     <div class="stats" id="stats"></div>
     <div class="card" style="margin-top:14px">
       <div class="row">
-        <div><div style="font-weight:700">🎨 그래픽 설정 추천</div><div class="sub">내 휴대폰 사양과 지난 게임 기록으로 게임 안 그래픽 설정을 골라줘요</div></div>
+        <div><div style="font-weight:700"><span data-ic="palette" style="color:var(--violet)"></span> 그래픽 설정 추천</div><div class="sub">내 휴대폰 사양과 지난 게임 기록으로 게임 안 그래픽 설정을 골라줘요</div></div>
       </div>
       <button class="btn" style="margin-top:12px" onclick="openGfx()">추천 보기</button>
     </div>
     <div class="card" style="margin-top:14px">
-      <div style="font-weight:700">🎯 터치·반응 도구</div>
+      <div style="font-weight:700"><span data-ic="target" style="color:var(--cyan)"></span> 터치·반응 도구</div>
       <div class="sub">터치가 안 먹는 곳이 있는지, 내 반응속도가 얼마인지 확인해요</div>
       <div style="display:flex;gap:10px;margin-top:12px">
-        <button class="btn" style="flex:1" onclick="openTouchTest()">👆 터치 테스트</button>
-        <button class="btn" style="flex:1" onclick="openReflex()">⚡ 반응속도</button>
+        <button class="btn" style="flex:1" onclick="openTouchTest()"><span data-ic="pointer"></span> 터치 테스트</button>
+        <button class="btn" style="flex:1" onclick="openReflex()"><span data-ic="zap" style="color:var(--yellow)"></span> 반응속도</button>
       </div>
       <div class="sub" style="font-size:14px;margin-top:8px;text-align:center" id="reflexBest"></div>
     </div>
@@ -323,7 +325,7 @@ nav button.on{color:var(--cyan)}
     </div>
     <div class="card">
       <div class="row">
-        <div><div style="font-weight:700">🔐 권한 관리</div><div class="sub" id="permSub">기능별로 필요한 권한을 확인해요</div></div>
+        <div><div style="font-weight:700"><span data-ic="lock" style="color:var(--cyan)"></span> 권한 관리</div><div class="sub" id="permSub">기능별로 필요한 권한을 확인해요</div></div>
         <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" onclick="openOnb()">열기</button>
       </div>
     </div>
@@ -338,9 +340,9 @@ nav button.on{color:var(--cyan)}
 </main>
 
 <nav>
-  <button class="on" data-t="boost" onclick="go('boost')"><span class="i">⚡</span>부스트</button>
-  <button data-t="games" onclick="go('games')"><span class="i">🎮</span>내 게임</button>
-  <button data-t="status" onclick="go('status')"><span class="i">📊</span>상태</button>
+  <button class="on" data-t="boost" onclick="go('boost')"><span class="i" data-ic="zap"></span>부스트</button>
+  <button data-t="games" onclick="go('games')"><span class="i" data-ic="gamepad"></span>내 게임</button>
+  <button data-t="status" onclick="go('status')"><span class="i" data-ic="chart"></span>상태</button>
 </nav>
 
 <div class="modal" id="picker" onclick="if(event.target===this)closePicker()">
@@ -374,7 +376,7 @@ nav button.on{color:var(--cyan)}
 
 <div class="onb" id="onb">
   <div class="top">
-    <div style="font-size:40px">⚡🎮</div>
+    <div style="font-size:44px"><span data-ic="zap" style="color:var(--yellow)"></span><span data-ic="gamepad" style="color:var(--cyan);margin-left:6px"></span></div>
     <h2>게임부스터 시작하기</h2>
     <div class="sub">기능을 쓰려면 아래 권한이 필요해요. 하나씩 눌러 허용하고 돌아오면 자동으로 체크돼요.</div>
     <div style="margin-top:10px;font-weight:800" id="onbCount"></div>
@@ -406,7 +408,7 @@ nav button.on{color:var(--cyan)}
 
 <div class="modal" id="gfxSheet" onclick="if(event.target===this)closeGfx()">
   <div class="sheet">
-    <div class="hd"><b style="font-size:20px">🎨 그래픽 설정 추천</b></div>
+    <div class="hd"><b style="font-size:20px"><span data-ic="palette" style="color:var(--violet)"></span> 그래픽 설정 추천</b></div>
     <div class="bd" id="gfxBody"></div>
     <div class="ft"><button class="btn pri" onclick="closeGfx()">닫기</button></div>
   </div>
@@ -431,10 +433,53 @@ nav button.on{color:var(--cyan)}
   </div>
 </div>
 
-<div class="overlay" id="overlay"><div class="big">🚀</div><div class="msg" id="ovMsg">부스트 중…</div><div class="sub" id="ovSub" style="margin-top:8px"></div></div>
+<div class="overlay" id="overlay"><div class="big" style="color:var(--yellow)"><span data-ic="rocket"></span></div><div class="msg" id="ovMsg">부스트 중…</div><div class="sub" id="ovSub" style="margin-top:8px"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
+const ICONS={
+ zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+ gamepad:'<rect x="2" y="6" width="20" height="12" rx="6"/><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="17.5" cy="13.5" r="1" fill="currentColor" stroke="none"/>',
+ chart:'<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-7"/>',
+ rocket:'<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+ sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+ settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+ palette:'<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.56C21.97 6.01 17.46 2 12 2z"/><circle cx="13.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="1.2" fill="currentColor" stroke="none"/>',
+ target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+ pointer:'<path d="M18 11V9a2 2 0 0 0-4 0v1M14 10V8a2 2 0 0 0-4 0v2M10 9.5V4a2 2 0 0 0-4 0v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+ lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+ battery:'<rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2M6 10.5v3M10 10.5v3"/>',
+ thermo:'<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+ wifi:'<path d="M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0M12 20h.01"/>',
+ phone:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+ drive:'<path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01M10 16h.01"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+ belloff:'<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
+ overlay:'<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/>',
+ package:'<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
+ film:'<rect x="2" y="2" width="20" height="20" rx="2.5"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>',
+ image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+ contrast:'<circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/>',
+ texture:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v6M15 9v6M9 15v6"/>',
+ sparkles:'<path d="M12 3l1.9 5.6 5.6 1.9-5.6 1.9L12 18l-1.9-5.6-5.6-1.9 5.6-1.9z"/><path d="M19 3v4M17 5h4M5 17v4M3 19h4"/>',
+ burst:'<path d="M12 2l2 6 6-3-3 6 6 2-6 2 3 6-6-3-2 6-2-6-6 3 3-6-6-2 6-2-3-6 6 3z"/>',
+ info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+ bulb:'<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/>',
+ volume:'<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+ alarm:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/>',
+ home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+ trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+ thumb:'<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
+ flame:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+ snow:'<path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93 4.93 19.07M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5M3.5 9l2.5 3-2.5 3M20.5 9 18 12l2.5 3"/>',
+ plug:'<path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+ warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ x:'<path d="M18 6 6 18M6 6l12 12"/>'
+};
+function ic(n,c){return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${c?` style="color:${c}"`:''}>${ICONS[n]||''}</svg>`}
+function hydrateIcons(root){(root||document).querySelectorAll('[data-ic]').forEach(e=>{e.innerHTML=ic(e.dataset.ic);e.removeAttribute('data-ic')})}
+hydrateIcons();
 const N = window.Native || null;
 const $ = id => document.getElementById(id);
 let cur = 'boost', statTimer = null, allApps = [], editing = false, lastPing = null;
@@ -475,17 +520,17 @@ function renderBoost(){
 }
 function renderChecks(s){
   const items=[];
-  items.push({ic:'🔋',t:'배터리 '+s.battery+'%'+(s.charging?' (충전 중)':''),
+  items.push({ic:'battery',t:'배터리 '+s.battery+'%'+(s.charging?' (충전 중)':''),
     st:s.battery>=30?['ok','양호']:s.battery>=15?['warn','부족']:['bad','충전 필요'], go:null});
   const tc = s.temp>=42?['bad','과열']:s.temp>=38?['warn','따뜻함']:['ok','정상'];
-  if(s.temp>0) items.push({ic:'🌡️',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
-  items.push({ic:'⚙️',t:'절전 모드 '+(s.powerSave?'켜짐 — 성능이 제한돼요':'꺼짐'),st:s.powerSave?['warn','끄기 권장']:['ok','좋음'],go:s.powerSave?'battery':null});
-  items.push({ic:'📶',t:'네트워크 '+s.net+(s.net==='모바일 데이터'?' — 와이파이가 더 안정적일 수 있어요':''),
+  if(s.temp>0) items.push({ic:'thermo',t:'배터리 온도 '+s.temp.toFixed(1)+'℃'+(s.charging&&s.temp>=38?' — 충전하며 게임하면 더 뜨거워져요':''),st:tc,go:null});
+  items.push({ic:'settings',t:'절전 모드 '+(s.powerSave?'켜짐 — 성능이 제한돼요':'꺼짐'),st:s.powerSave?['warn','끄기 권장']:['ok','좋음'],go:s.powerSave?'battery':null});
+  items.push({ic:'wifi',t:'네트워크 '+s.net+(s.net==='모바일 데이터'?' — 와이파이가 더 안정적일 수 있어요':''),
     st:s.net==='연결 없음'?['bad','끊김']:s.net==='와이파이'?['ok','좋음']:['warn','확인'],go:s.net==='연결 없음'?'wifi':'compare'});
   const freePct=Math.round(s.diskFree/s.diskTotal*100);
-  items.push({ic:'💾',t:'저장공간 여유 '+gb(s.diskFree)+'GB ('+freePct+'%)',st:freePct>=15?['ok','양호']:freePct>=8?['warn','부족']:['bad','정리 필요'],go:freePct<15?'storage':null});
-  if(!s.dndGranted) items.push({ic:'🔕',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
-  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic">${i.ic}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
+  items.push({ic:'drive',t:'저장공간 여유 '+gb(s.diskFree)+'GB ('+freePct+'%)',st:freePct>=15?['ok','양호']:freePct>=8?['warn','부족']:['bad','정리 필요'],go:freePct<15?'storage':null});
+  if(!s.dndGranted) items.push({ic:'belloff',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
+  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic" style="color:${{ok:'var(--green)',warn:'var(--orange)',bad:'var(--red)'}[i.st[0]]}">${ic(i.ic)}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
 }
 function openSet(w){ if(!N) return; if(w==='compare'){go('status');setTimeout(()=>{$('ncCard').scrollIntoView({behavior:'smooth'});doCompare()},200);return} if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
 
@@ -500,7 +545,7 @@ function onBoostDone(json){
   const r=JSON.parse(json); const b=$('boostBtn'); b.classList.remove('busy');
   if(r.error){$('result').textContent='오류: '+r.error;return}
   const f=mb(r.freed);
-  $('result').innerHTML = (f>=20 ? `메모리 <b>${f}MB</b> 확보!` : `이미 최적 상태예요 <b>✓</b>`)
+  $('result').innerHTML = (f>=20 ? `메모리 <b>${f}MB</b> 확보!` : `이미 최적 상태예요 <b>${ic('check')}</b>`)
     + `<div class="sub">백그라운드 정리 완료 (앱 ${r.count}개 확인)${r.dnd?' · 방해금지 ON':''}</div>`;
   $('boostSub').textContent='방금 최적화함';
   setTimeout(renderBoost,200);
@@ -524,8 +569,8 @@ function onMyGames(json){
   const list=JSON.parse(json).sort((a,b)=>a.label.localeCompare(b.label,'ko'));
   $('gameEmpty').style.display=list.length?'none':'block';
   $('gameGrid').innerHTML=list.map(g=>`<div class="game" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="playGame(this.dataset.pkg,this.dataset.label)">
-     <button class="del" onclick="event.stopPropagation();removeGame('${g.pkg}')">✕</button>
-     <button class="gear ${isOwn(g.pkg)?'own':''}" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="event.stopPropagation();openMode(this.dataset.pkg,this.dataset.label)">⚙</button>
+     <button class="del" onclick="event.stopPropagation();removeGame('${g.pkg}')">${ic('x')}</button>
+     <button class="gear ${isOwn(g.pkg)?'own':''}" data-pkg="${g.pkg}" data-label="${esc(g.label)}" onclick="event.stopPropagation();openMode(this.dataset.pkg,this.dataset.label)">${ic('settings')}</button>
      <img src="data:image/png;base64,${g.icon}"><div class="nm">${esc(g.label)}</div></div>`).join('');
 }
 function isOwn(p){ try{ return N&&N.getGameMode&&JSON.parse(N.getGameMode(p)).mode.own }catch(e){ return false } }
@@ -572,7 +617,7 @@ function renderStatus(){
   const bCol=s.battery>=30?'var(--green)':s.battery>=15?'var(--orange)':'var(--red)';
   const thermal=['정상','약간 따뜻','따뜻함','뜨거움','매우 뜨거움','위험','차단'][s.thermal]||null;
   $('stats').innerHTML=`
-   <div class="stat"><div class="k">배터리${s.charging?' ⚡':''}</div><div class="v" style="color:${bCol}">${s.battery}<small>%</small></div><div class="bar"><i style="width:${s.battery}%;background:${bCol}"></i></div></div>
+   <div class="stat"><div class="k">배터리${s.charging?' '+ic('zap','var(--yellow)'):''}</div><div class="v" style="color:${bCol}">${s.battery}<small>%</small></div><div class="bar"><i style="width:${s.battery}%;background:${bCol}"></i></div></div>
    <div class="stat"><div class="k">온도</div><div class="v" style="color:${tCol}">${s.temp.toFixed(1)}<small>℃</small></div><div class="sub">${thermal?'기기 발열: '+thermal:''}</div></div>
    <div class="stat wide"><div class="row"><div class="k">메모리 (RAM)</div><div class="sub">${gb(s.ramTotal-s.ramAvail)} / ${gb(s.ramTotal)}GB</div></div><div class="v">${ramPct}<small>% 사용</small></div><div class="bar"><i style="width:${ramPct}%;background:${ramPct>=85?'var(--red)':ramPct>=70?'var(--orange)':'var(--cyan)'}"></i></div></div>
    <div class="stat wide"><div class="row"><div class="k">저장공간</div><div class="sub">여유 ${gb(s.diskFree)}GB</div></div><div class="v">${diskPct}<small>% 사용</small></div><div class="bar"><i style="width:${diskPct}%;background:var(--violet)"></i></div></div>
@@ -587,7 +632,7 @@ function doPing(){
 }
 function onPing(json){
   const r=JSON.parse(json);$('pingBtn').textContent='다시 측정';$('pingBtn').disabled=false;
-  if(r.best<0){$('pingVal').textContent='✕';$('pingSub').textContent='인터넷 연결을 확인하세요';return}
+  if(r.best<0){$('pingVal').innerHTML=ic('x','var(--red)');$('pingSub').textContent='인터넷 연결을 확인하세요';return}
   const v=r.avg; const c=v<=50?'var(--green)':v<=100?'var(--orange)':'var(--red)';
   $('pingVal').innerHTML=`<span style="color:${c}">${v}<small style="font-size:16px">ms</small></span>`;
   $('pingSub').textContent=(v<=50?'아주 좋음 — 실시간 게임 OK':v<=100?'보통 — 대전 게임은 약간 지연':'느림 — 와이파이 변경 권장')+` (최저 ${r.best}ms)`;
@@ -613,7 +658,7 @@ function onUpdateInfo(json){
   if(r.none){
     upInfo=null; $('upBanner').classList.remove('on');
     $('verSub').textContent='현재 '+r.current+' · 최신 버전이에요';
-    if(upManual) toast('최신 버전이에요 ✓');
+    if(upManual) toast('최신 버전이에요');
     return;
   }
   upInfo=r;
@@ -670,13 +715,13 @@ function doCompare(){
 }
 function ncColor(ms){return ms<0?'var(--sub)':ms<=60?'var(--green)':ms<=120?'var(--orange)':'var(--red)'}
 function ncCol(kind,s,win,current){
-  const icon=kind==='wifi'?'📶 와이파이':'📱 4G/5G';
+  const icon=kind==='wifi'?ic('wifi')+' 와이파이':ic('phone')+' 4G/5G';
   const now=current===kind?' <span class="badge ok" style="font-size:12px;padding:1px 7px">사용 중</span>':'';
   if(!s) return `<div class="ncc"><div class="hd2">${icon}</div><div class="ms" style="font-size:20px;color:var(--sub)">연결 없음</div><div class="meta">${kind==='wifi'?'와이파이가 꺼져 있거나 연결되지 않았어요':'모바일 데이터가 꺼져 있어요'}</div></div>`;
   const smp=s.samples, mx=Math.max(60,...smp.filter(x=>x>=0));
   const bars=smp.map(x=>x<0?'<i style="height:6px;background:var(--red)"></i>':`<i style="height:${Math.max(8,x/mx*100)}%;background:${ncColor(x)}"></i>`).join('');
   return `<div class="ncc ${win?'win':''}"><div class="hd2"><span class="lb">${icon}</span>${now}</div>
-    <div class="ms" style="color:${ncColor(s.avg)}">${s.avg<0?'✕':s.avg+'<small> ms</small>'}</div>
+    <div class="ms" style="color:${ncColor(s.avg)}">${s.avg<0?ic('x'):s.avg+'<small> ms</small>'}</div>
     <div class="bars">${bars}</div>
     <div class="meta">흔들림 ${s.jitter<0?'-':s.jitter+'ms'}<br>끊김 ${s.lost}/10</div></div>`;
 }
@@ -709,21 +754,21 @@ function loadLastCompare(){ if(N&&N.lastNetCompare){const s=N.lastNetCompare(); 
 
 /* ---------- 처음 안내 · 권한 ---------- */
 const PERMS=[
-  {k:'notif',i:'🔔',n:'알림',w:'업데이트·게임 리포트·휴식 알림을 받아요',req:true},
-  {k:'dnd',i:'🔕',n:'방해금지 제어',w:'게임하는 동안 알림·전화를 막고, 끝나면 되돌려요',req:true},
-  {k:'overlay',i:'🪟',n:'다른 앱 위에 표시',w:'게임 위 HUD와 화면 켜짐 유지에 필요해요',req:true},
-  {k:'usage',i:'📊',n:'사용 정보 접근',w:'홈 화면에서 켠 게임을 자동으로 알아채요',req:false},
-  {k:'install',i:'📦',n:'이 앱에서 설치 허용',w:'새 버전을 앱 안에서 바로 설치해요',req:false}];
+  {k:'notif',i:'bell',n:'알림',w:'업데이트·게임 리포트·휴식 알림을 받아요',req:true},
+  {k:'dnd',i:'belloff',n:'방해금지 제어',w:'게임하는 동안 알림·전화를 막고, 끝나면 되돌려요',req:true},
+  {k:'overlay',i:'overlay',n:'다른 앱 위에 표시',w:'게임 위 HUD와 화면 켜짐 유지에 필요해요',req:true},
+  {k:'usage',i:'chart',n:'사용 정보 접근',w:'홈 화면에서 켠 게임을 자동으로 알아채요',req:false},
+  {k:'install',i:'package',n:'이 앱에서 설치 허용',w:'새 버전을 앱 안에서 바로 설치해요',req:false}];
 function perms(){ if(!N||!N.getPermissions) return null; try{return JSON.parse(N.getPermissions())}catch(e){return null} }
 function renderOnb(){
   const p=perms(); if(!p) return;
   const ok=PERMS.filter(x=>p[x.k]).length;
   $('onbCount').innerHTML=`<span style="color:${ok===PERMS.length?'var(--green)':'var(--cyan)'}">${ok}/${PERMS.length} 허용됨</span>`;
   $('onbGo').textContent=ok===PERMS.length?'모두 준비됐어요 — 시작하기':'시작하기';
-  $('onbList').innerHTML=PERMS.map(x=>`<div class="prm"><div class="pi">${x.i}</div>
+  $('onbList').innerHTML=PERMS.map(x=>`<div class="prm"><div class="pi" style="color:var(--cyan)">${ic(x.i)}</div>
     <div class="pt"><b>${x.n}</b><span class="tag" style="background:${x.req?'rgba(34,211,238,.15)':'var(--card2)'};color:${x.req?'var(--cyan)':'var(--sub)'}">${x.req?'권장':'선택'}</span>
     <div class="sub" style="font-size:15px">${x.w}</div></div>
-    ${p[x.k]?'<span class="ok">✓ 허용됨</span>':`<button onclick="N.requestPermission('${x.k}')">허용하기</button>`}</div>`).join('')+
+    ${p[x.k]?'<span class="ok">'+ic('check')+' 허용됨</span>':`<button onclick="N.requestPermission('${x.k}')">허용하기</button>`}</div>`).join('')+
     `<div class="sub" style="font-size:14px;text-align:center;margin:6px 4px 12px">권한은 언제든 상태 탭 → 권한 관리에서 다시 볼 수 있어요.<br>HUD·자동 감지는 내 게임 탭에서 켜고 끌 수 있어요.</div>`;
 }
 function openOnb(){ renderOnb(); $('onb').classList.add('on') }
@@ -745,21 +790,21 @@ function gfxRecommend(sp, sess){
   const fpsCap=[30,30,60,90,120][tier];
   const fps=Math.min(hz, heatNote? Math.min(fpsCap,60) : fpsCap);
   const rows=[];
-  rows.push({i:'🎚',t:'그래픽 품질',v:names[tier],c:tier>=3?'var(--green)':tier>=2?'var(--cyan)':'var(--orange)',
+  rows.push({i:'sliders',t:'그래픽 품질',v:names[tier],c:tier>=3?'var(--green)':tier>=2?'var(--cyan)':'var(--orange)',
     r:`이 휴대폰은 ${['최저','낮음','보통','높음','최상'][tier]} 등급이에요.`+(heatNote?' '+heatNote+'.':'')});
-  rows.push({i:'🎞',t:'프레임(fps)',v:fps+' fps',c:'var(--green)',
+  rows.push({i:'film',t:'프레임(fps)',v:fps+' fps',c:'var(--green)',
     r: hz<fpsCap&&!heatNote ? `화면이 최대 ${hz}Hz라서 ${fpsCap}fps로 올려도 ${hz}fps까지만 보여요.`
       : heatNote ? '발열이 잦아서 프레임을 60으로 묶으면 오래 부드럽게 유지돼요.'
       : `이 등급은 ${fps}fps까지 무리 없이 돌아가요.`+(fps>=90?' 배터리를 아끼려면 60으로 낮추세요.':'')});
-  rows.push({i:'🖼',t:'해상도',v:tier>=3?'기본 유지':tier===2?'기본 또는 한 단계 낮게':'낮게',c:tier>=3?'var(--cyan)':'var(--orange)',
+  rows.push({i:'image',t:'해상도',v:tier>=3?'기본 유지':tier===2?'기본 또는 한 단계 낮게':'낮게',c:tier>=3?'var(--cyan)':'var(--orange)',
     r: tier>=3?'메모리가 넉넉해서 해상도를 낮추면 화면만 흐려져요.':'해상도를 낮추면 프레임이 가장 크게 좋아져요.'});
-  rows.push({i:'🌓',t:'그림자',v:tier>=4?'높음':tier===3?'중간':tier===2?'낮음':'끄기',c:tier>=3?'var(--green)':'var(--orange)',
+  rows.push({i:'contrast',t:'그림자',v:tier>=4?'높음':tier===3?'중간':tier===2?'낮음':'끄기',c:tier>=3?'var(--green)':'var(--orange)',
     r:'그림자는 가장 무거운 효과예요.'+(tier<=2?' 끄면 체감 성능이 바로 좋아져요.':' 이 등급은 감당할 여유가 있어요.')});
-  rows.push({i:'🧱',t:'텍스처',v:ram>=11?'높음':ram>=7.5?'중간':ram>=5.5?'중간':'낮음',c:ram>=7.5?'var(--green)':'var(--orange)',
+  rows.push({i:'texture',t:'텍스처',v:ram>=11?'높음':ram>=7.5?'중간':ram>=5.5?'중간':'낮음',c:ram>=7.5?'var(--green)':'var(--orange)',
     r:`텍스처는 주로 메모리를 써요. RAM ${ram}GB면 ${ram>=11?'높음':ram>=5.5?'중간':'낮음'}이 알맞아요.`});
-  rows.push({i:'✨',t:'안티앨리어싱',v:tier>=4?'켜기':'끄기',c:tier>=4?'var(--green)':'var(--sub)',
+  rows.push({i:'sparkles',t:'안티앨리어싱',v:tier>=4?'켜기':'끄기',c:tier>=4?'var(--green)':'var(--sub)',
     r: tier>=4?'계단 현상을 줄여줘요. 여유가 있어서 켜도 괜찮아요.':'휴대폰 화면은 촘촘해서 꺼도 차이가 작고 성능 이득은 커요.'});
-  rows.push({i:'💥',t:'효과·파티클',v:tier>=3?'중간':'낮음',c:tier>=3?'var(--cyan)':'var(--orange)',
+  rows.push({i:'burst',t:'효과·파티클',v:tier>=3?'중간':'낮음',c:tier>=3?'var(--cyan)':'var(--orange)',
     r:'한타·폭발 장면에서 프레임이 떨어진다면 이것부터 낮추세요.'});
   return {tier,names,rows,why,heatNote};
 }
@@ -772,8 +817,8 @@ function openGfx(){
     <div class="tier"><div class="bars4">${bars}</div>
       <div><div class="sub" style="font-size:14px">추천 등급</div><div style="font-size:26px;font-weight:800;color:var(--green)">${g.names[g.tier]}</div>
       <div class="sub" style="font-size:14px">${g.why[0]} · ${sp.maxHz}Hz · ${sp.resW}×${sp.resH}</div></div></div>
-    <div class="sub" style="font-size:14px;margin-bottom:6px">ℹ️ 게임 안 설정 메뉴에서 직접 바꾸는 추천값이에요. 게임부스터가 게임 설정을 바꾸거나 게임 자체를 빠르게 할 수는 없어요.</div>
-    ${g.rows.map(r=>`<div class="gset"><div class="gi">${r.i}</div><div class="gt"><div class="row"><b>${r.t}</b><span class="gv" style="color:${r.c}">${r.v}</span></div><div class="sub" style="font-size:15px">${r.r}</div></div></div>`).join('')}
+    <div class="sub" style="font-size:14px;margin-bottom:6px">${ic('info')} 게임 안 설정 메뉴에서 직접 바꾸는 추천값이에요. 게임부스터가 게임 설정을 바꾸거나 게임 자체를 빠르게 할 수는 없어요.</div>
+    ${g.rows.map(r=>`<div class="gset"><div class="gi" style="color:var(--cyan)">${ic(r.i)}</div><div class="gt"><div class="row"><b>${r.t}</b><span class="gv" style="color:${r.c}">${r.v}</span></div><div class="sub" style="font-size:15px">${r.r}</div></div></div>`).join('')}
     <div class="sub" style="font-size:14px;margin:8px 0 12px">${esc(sp.model)} · ${esc(sp.soc||'')}</div>`;
   $('gfxSheet').classList.add('on');
 }
@@ -784,27 +829,27 @@ let modePkg=null, modeData=null, modeInfo=null, modeWaitOverlay=false;
 function openMode(pkg,label){
   if(!N||!N.getGameMode){toast('휴대폰 앱에서만 동작해요');return}
   modePkg=pkg; modeInfo=JSON.parse(N.getGameMode(pkg)); modeData=Object.assign({dnd:false,keepScreen:false,mediaVol:-1,breakMin:0},modeInfo.mode);
-  $('modeTitle').textContent=pkg==='_default'?'🎛 기본 게임 모드':'⚙ '+label;
+  $('modeTitle').innerHTML=pkg==='_default'?ic('sliders')+' 기본 게임 모드':ic('settings')+' '+esc(label);
   renderMode(); $('modeSheet').classList.add('on');
 }
 function renderMode(){
   const d=modeData, isDef=modePkg==='_default', own=isDef||d.own;
-  const opt=(k,icon,txt)=>`<button class="opt ${d[k]?'on':''}" onclick="toggleOpt('${k}')"><span class="oi">${icon}</span>${txt}</button>`;
+  const opt=(k,icon,txt)=>`<button class="opt ${d[k]?'on':''}" onclick="toggleOpt('${k}')"><span class="oi">${ic(icon)}</span>${txt}</button>`;
   const seg=(k,vals)=>`<div class="seg">${vals.map(([v,t])=>`<button class="${d[k]==v?'on':''}" onclick="modeData.${k}=${v};renderMode()">${t}</button>`).join('')}</div>`;
   let warn='';
-  if(d.dnd&&!modeInfo.dndGranted) warn+=`<div class="advice" style="margin-top:4px">🔕 방해금지 권한이 없어서 아직 동작하지 않아요. <button class="go" style="margin-left:4px" onclick="N.openDndPermission()">허용하기</button></div>`;
-  if(d.keepScreen&&!modeInfo.overlay) warn+=`<div class="advice" style="margin-top:4px">💡 화면 켜짐 유지는 '다른 앱 위에 표시' 권한이 필요해요. <button class="go" style="margin-left:4px" onclick="modeWaitOverlay=true;N.openOverlayPermission()">허용하기</button></div>`;
+  if(d.dnd&&!modeInfo.dndGranted) warn+=`<div class="advice" style="margin-top:4px">${ic('belloff','var(--yellow)')} 방해금지 권한이 없어서 아직 동작하지 않아요. <button class="go" style="margin-left:4px" onclick="N.openDndPermission()">허용하기</button></div>`;
+  if(d.keepScreen&&!modeInfo.overlay) warn+=`<div class="advice" style="margin-top:4px">${ic('bulb','var(--yellow)')} 화면 켜짐 유지는 '다른 앱 위에 표시' 권한이 필요해요. <button class="go" style="margin-left:4px" onclick="modeWaitOverlay=true;N.openOverlayPermission()">허용하기</button></div>`;
   $('modeBody').innerHTML=(isDef?'':`
     <div class="row" style="margin:12px 0 4px"><div><div style="font-weight:700">이 게임 전용 설정</div><div class="sub">끄면 기본 게임 모드를 따라가요</div></div>
       <label class="sw"><input type="checkbox" ${d.own?'checked':''} onchange="modeData.own=this.checked;renderMode()"><span></span></label></div>`)+`
     <div class="${own?'':'dis'}">
-      <div class="optgrid">${opt('dnd','🔕','방해금지')}${opt('keepScreen','💡','화면 켜짐 유지')}</div>
-      <div class="mlabel">🔊 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
-      <div class="mlabel">⏰ 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
+      <div class="optgrid">${opt('dnd','belloff','방해금지')}${opt('keepScreen','bulb','화면 켜짐 유지')}</div>
+      <div class="mlabel">${ic('volume')} 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
+      <div class="mlabel">${ic('alarm')} 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
       ${warn}
     </div>
     ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}
-    ${isDef?'':`<button class="btn" style="margin:8px 0 14px" onclick="pinGame()">🏠 홈 화면에 바로가기 만들기</button>
+    ${isDef?'':`<button class="btn" style="margin:8px 0 14px" onclick="pinGame()">${ic('home')} 홈 화면에 바로가기 만들기</button>
       <div class="sub" style="text-align:center;font-size:14px;margin:-6px 0 12px">홈 화면 아이콘을 누르면 부스트 후 바로 게임이 켜져요</div>`}`;
 }
 function pinGame(){
@@ -885,7 +930,7 @@ function drawTouch(){
   const done=TC.cells.filter(x=>x).length, all=TC.cells.length;
   $('tInfo').innerHTML=`<b>화면 전체를 손가락으로 문질러 보세요</b><br>칠해진 칸 <b style="color:var(--cyan)">${done}/${all}</b>`+
     ` · 동시 터치 최대 <b style="color:var(--yellow)">${TC.maxTouch}</b>개`+(TC.rate?` · 터치 감지 약 <b style="color:var(--green)">${TC.rate}Hz</b>`:'')+
-    (done===all?'<br><span style="color:var(--green)">✓ 모든 칸이 정상적으로 터치돼요</span>':done>all*0.8?'<br><span class="sub">끝까지 칠해지지 않는 칸이 있으면 그 부분 터치가 약한 거예요</span>':'<br><span class="sub" style="font-size:13px">문지르는 동안 이 안내는 흐려져요. 버튼 아래 칸도 칠할 수 있어요</span>');
+    (done===all?'<br><span style="color:var(--green)">'+ic('check')+' 모든 칸이 정상적으로 터치돼요</span>':done>all*0.8?'<br><span class="sub">끝까지 칠해지지 않는 칸이 있으면 그 부분 터치가 약한 거예요</span>':'<br><span class="sub" style="font-size:13px">문지르는 동안 이 안내는 흐려져요. 버튼 아래 칸도 칠할 수 있어요</span>');
 }
 
 /* ---------- 반응속도 ---------- */
@@ -895,7 +940,7 @@ function renderReflexBest(){ const b=bestReflex(); if($('reflexBest')) $('reflex
 function openReflex(){ $('reflexTool').classList.add('on'); RX.round=0; RX.times=[]; rxIntro();
   const el=$('rx'); if(!el._bound){ el._bound=true; el.addEventListener('pointerdown',rxTap) } }
 function rxSet(bg,html){ const el=$('rx'); el.style.background=bg; el.innerHTML=html }
-function rxIntro(){ RX.state='intro'; rxSet('#0B1220',`<div class="big">⚡</div><div class="msg">반응속도 측정</div><div class="res sub">화면이 <b style="color:var(--green)">초록색</b>으로 바뀌는 순간 최대한 빨리 누르세요.<br>5번 재서 평균을 내요.<br><br><b style="color:var(--text)">화면을 눌러 시작</b></div>`) }
+function rxIntro(){ RX.state='intro'; rxSet('#0B1220',`<div class="big" style="color:var(--yellow)">${ic('zap')}</div><div class="msg">반응속도 측정</div><div class="res sub">화면이 <b style="color:var(--green)">초록색</b>으로 바뀌는 순간 최대한 빨리 누르세요.<br>5번 재서 평균을 내요.<br><br><b style="color:var(--text)">화면을 눌러 시작</b></div>`) }
 function rxWait(){ RX.state='wait'; rxSet('#7F1D1D',`<div class="big">${RX.round+1} / 5</div><div class="msg">초록색이 되면 누르세요…</div>`);
   clearTimeout(RX.timer); RX.timer=setTimeout(()=>{ RX.state='go'; RX.shownAt=performance.now(); rxSet('#15803D','<div class="big">지금!</div>') },1500+Math.random()*2500) }
 function rxTap(e){
@@ -911,7 +956,7 @@ function rxTap(e){
 function rxDone(){
   RX.state='done'; const a=Math.round(RX.times.reduce((x,y)=>x+y,0)/RX.times.length), b=Math.min(...RX.times);
   const prev=bestReflex(), isBest=!prev||a<prev; if(isBest){ try{localStorage.setItem('reflexBest',a)}catch(e){} }
-  const g=a<200?['아주 빨라요 🏆','var(--green)']:a<250?['빨라요 👍','var(--green)']:a<300?['보통이에요','var(--cyan)']:a<400?['조금 느려요','var(--orange)']:['연습이 필요해요','var(--red)'];
+  const g=a<200?['아주 빨라요 '+ic('trophy'),'var(--green)']:a<250?['빨라요 '+ic('thumb'),'var(--green)']:a<300?['보통이에요','var(--cyan)']:a<400?['조금 느려요','var(--orange)']:['연습이 필요해요','var(--red)'];
   rxSet('#0B1220',`<div class="msg">평균 반응속도</div><div class="big" style="color:${g[1]}">${a}<span style="font-size:22px">ms</span></div>
     <div class="msg" style="color:${g[1]}">${g[0]}${isBest?' · 새 최고 기록!':''}</div>
     <div class="res">가장 빠름 ${b}ms · ${RX.times.join(' / ')}ms<br><span class="sub">화면·터치 지연이 조금 포함돼요. 보통 사람은 250ms 안팎이에요.</span><br><br><b>눌러서 다시 하기</b></div>`);
@@ -947,16 +992,16 @@ function coachLines(list,st){
   const out=[];
   if(st.onsets.length){
     const m=Math.round(avg(st.onsets));
-    out.push(`🔥 보통 <b>${m}분쯤</b> 42℃를 넘어요.`+(m>=10?` ${Math.max(5,m-5)}분쯤 잠깐 쉬거나 그래픽을 한 단계 낮추면 좋아요.`:' 시작부터 뜨거워지니 그래픽을 낮춰보세요.'));
-  } else if(st.n>=2) out.push('❄️ 지금까지 이 게임에서 42℃를 넘은 적이 없어요.');
+    out.push(`${ic('flame','var(--orange)')} 보통 <b>${m}분쯤</b> 42℃를 넘어요.`+(m>=10?` ${Math.max(5,m-5)}분쯤 잠깐 쉬거나 그래픽을 한 단계 낮추면 좋아요.`:' 시작부터 뜨거워지니 그래픽을 낮춰보세요.'));
+  } else if(st.n>=2) out.push(ic('snow','var(--cyan)')+' 지금까지 이 게임에서 42℃를 넘은 적이 없어요.');
   const b=list.filter(s=>s.boosted), nb=list.filter(s=>!s.boosted);
   if(b.length&&nb.length){ const d=Math.round((avg(nb.map(s=>s.tMax))-avg(b.map(s=>s.tMax)))*10)/10;
-    out.push(Math.abs(d)>=0.5?`⚡ 부스트한 판이 최고 온도가 평균 <b>${Math.abs(d)}℃ ${d>0?'낮았어요':'높았어요'}</b>.`:'⚡ 부스트 여부에 따른 온도 차이는 거의 없었어요.'); }
+    out.push(Math.abs(d)>=0.5?`${ic('zap','var(--yellow)')} 부스트한 판이 최고 온도가 평균 <b>${Math.abs(d)}℃ ${d>0?'낮았어요':'높았어요'}</b>.`:ic('zap','var(--yellow)')+' 부스트 여부에 따른 온도 차이는 거의 없었어요.'); }
   const ch=list.filter(s=>s.charged), nch=list.filter(s=>!s.charged);
   if(ch.length&&nch.length){ const d=Math.round((avg(ch.map(s=>s.tMax))-avg(nch.map(s=>s.tMax)))*10)/10;
-    if(d>=1) out.push(`🔌 충전하면서 한 판이 평균 <b>${d}℃ 더 뜨거웠어요</b>.`); }
-  if(st.drain>0) out.push(`🔋 시간당 배터리 ${Math.round(st.drain)}%를 써요. 가득 충전하면 약 <b>${(100/st.drain).toFixed(1)}시간</b> 할 수 있어요.`);
-  if(st.throttled) out.push(`⚠️ ${st.n}판 중 ${st.throttled}판에서 발열로 성능이 제한됐어요.`);
+    if(d>=1) out.push(`${ic('plug','var(--yellow)')} 충전하면서 한 판이 평균 <b>${d}℃ 더 뜨거웠어요</b>.`); }
+  if(st.drain>0) out.push(`${ic('battery','var(--green)')} 시간당 배터리 ${Math.round(st.drain)}%를 써요. 가득 충전하면 약 <b>${(100/st.drain).toFixed(1)}시간</b> 할 수 있어요.`);
+  if(st.throttled) out.push(`${ic('warn','var(--red)')} ${st.n}판 중 ${st.throttled}판에서 발열로 성능이 제한됐어요.`);
   if(st.n<3) out.push(`<span class="sub">기록이 ${st.n}판뿐이라 아직 정확하지 않아요. 3판 이상 하면 더 믿을 만해져요.</span>`);
   return out;
 }
@@ -997,7 +1042,7 @@ function renderSessions(){
   $('sessList').innerHTML=sessions.map(s=>`<div class="sess" onclick="openReport(${s.id})">
     <div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
-      <div class="chips"><span class="chip">🔋 ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">🌡 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}</div>
+      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}</div>
     </div><div style="font-size:22px;color:var(--sub)">›</div></div>`).join('');
 }
 function chartSvg(s){
@@ -1033,11 +1078,11 @@ function compareText(s){
 }
 function adviceText(s){
   const a=[];
-  if(s.thermalMax>=3) a.push('🔥 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" onclick="closeReport();openGfx()">그래픽 추천 보기</button>');
-  if(s.charged&&s.tMax>=40) a.push('🔌 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
-  if(s.tMax>=42&&!s.charged) a.push('🧊 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
-  if(s.perHour>=25) a.push('🔋 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
-  if(!a.length) a.push('👍 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
+  if(s.thermalMax>=3) a.push(ic('flame','var(--orange)')+' 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" onclick="closeReport();openGfx()">그래픽 추천 보기</button>');
+  if(s.charged&&s.tMax>=40) a.push(ic('plug','var(--yellow)')+' 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
+  if(s.tMax>=42&&!s.charged) a.push(ic('snow','var(--cyan)')+' 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
+  if(s.perHour>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
+  if(!a.length) a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
   return `<div class="advice">${a.join('<br>')}</div>`;
 }
 function openReport(id){
