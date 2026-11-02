@@ -697,6 +697,28 @@ public class MainActivity extends Activity {
             return "ok";
         }
 
+        /** HUD 모양 설정 */
+        @JavascriptInterface
+        public String getHudPrefs() {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("size", prefs.getInt("hudSize", 1));
+                o.put("alpha", prefs.getInt("hudAlpha", 0));
+                o.put("autoMin", prefs.getBoolean("hudAutoMin", true));
+                o.put("line", prefs.getBoolean("hudLine", true));
+                return o.toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void setHudPrefs(String json) {
+            try {
+                JSONObject o = new JSONObject(json);
+                prefs.edit().putInt("hudSize", o.optInt("size", 1)).putInt("hudAlpha", o.optInt("alpha", 0))
+                        .putBoolean("hudAutoMin", o.optBoolean("autoMin", true)).putBoolean("hudLine", o.optBoolean("line", true)).apply();
+            } catch (Exception ignored) {}
+        }
+
         @JavascriptInterface
         public boolean getAlerts() { return prefs.getBoolean("alerts", true); }
 

@@ -40,6 +40,7 @@ public class SessionService extends Service {
     static final String ACTION_STOP = "com.thkim.gamebooster.SESSION_STOP";
     static final String ACTION_WATCH = "com.thkim.gamebooster.WATCH";
     static final String ACTION_UNWATCH = "com.thkim.gamebooster.UNWATCH";
+    static final String ACTION_SHOW_HUD = "com.thkim.gamebooster.SHOW_HUD";
     static final String ACTION_ENDED = "com.thkim.gamebooster.SESSION_ENDED";
     private static final String CH = "session", CH_WATCH = "watch", CH_REPORT = "report";
     private static final int NOTI_ID = 77;
@@ -57,6 +58,7 @@ public class SessionService extends Service {
     private int breakMin;                 // 휴식 알림 간격(분), 0이면 끔
     private long nextBreak;
     private boolean inSession;
+    private boolean hudClosed;            // 이번 게임에서 사용자가 HUD를 닫았음
     private String sessionPkg;
     private long leftAt;                  // 게임에서 다른 앱으로 간 시각 (0 = 게임 중)
     private String fgPkg;                 // 지금 화면 맨 앞 앱
@@ -135,6 +137,10 @@ public class SessionService extends Service {
             endSession(intent.getBooleanExtra("open", false), false);
             return START_STICKY;
         }
+        if (ACTION_SHOW_HUD.equals(action)) {
+            if (inSession) { hudClosed = false; createHud(300); refreshNoti(); }
+            return START_STICKY;
+        }
         if (ACTION_UNWATCH.equals(action)) {
             if (!inSession) { stopAll(); return START_NOT_STICKY; }
             return START_STICKY;            // 세션 중이면 세션이 끝날 때 멈춤
@@ -174,13 +180,31 @@ public class SessionService extends Service {
             nextBreak = breakMin > 0 ? start + breakMin * 60_000L : Long.MAX_VALUE;
             if (meta.optBoolean("keepScreen") && keepView == null && Hud.canShow(this)) addKeepScreen();
         } catch (Exception ignored) {}
-        if (hud == null && prefs(this).getBoolean("hud", false) && Hud.canShow(this)) {
-            String label = "게임";
-            try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
-            hud = new Hud(this, label, start, () -> endSession(true, false));
-            h.postDelayed(() -> { if (hud != null) hud.show(); }, 1500); // 게임이 뜬 뒤에 보이도록
-        }
+        hudClosed = false;
+        if (prefs(this).getBoolean("hud", false)) createHud(1500);   // 게임이 뜬 뒤에 보이도록
         kick();
+    }
+
+    /** HUD 만들기 (닫기 → HUD만 숨김, 게임 모드·기록은 계속) */
+    private void createHud(long delay) {
+        if (hud != null || !Hud.canShow(this)) return;
+        String label = "게임";
+        try { label = new JSONObject(readAll(metaFile(this))).optString("label", "게임"); } catch (Exception ignored) {}
+        hud = new Hud(this, label, start, new Hud.Listener() {
+            @Override public void onFinish() { endSession(true, false); }
+            @Override public void onClose() {
+                if (hud != null) { hud.hide(); hud = null; }
+                hudClosed = true;
+                refreshNoti();
+                android.widget.Toast.makeText(SessionService.this,
+                        "HUD만 닫았어요. 게임 모드·기록은 계속돼요 (알림창에서 다시 열 수 있어요)", android.widget.Toast.LENGTH_LONG).show();
+            }
+        });
+        h.postDelayed(() -> { if (hud != null) hud.show(); }, delay);
+    }
+
+    private void refreshNoti() {
+        try { ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTI_ID, buildNoti()); } catch (Exception ignored) {}
     }
 
     private final Runnable tick = new Runnable() {
@@ -198,7 +222,7 @@ public class SessionService extends Service {
                 if (now >= nextBreak) {
                     int played = (int) ((now - start) / 60_000);
                     GameMode.breakNotice(SessionService.this, played);
-                    if (hud != null) hud.flash("⏰ " + played + "분 했어요 — 잠깐 쉬어가세요");
+                    if (hud != null) hud.flash(played + "분 했어요 — 잠깐 쉬어가세요");
                     nextBreak += breakMin * 60_000L;
                 }
                 // 자동 감지: 게임을 떠나 다른 앱(게임부스터 제외)으로 간 지 8초 지나면 종료
@@ -241,13 +265,13 @@ public class SessionService extends Service {
                 alert(91, "🔥 휴대폰이 뜨거워요 (" + String.format(java.util.Locale.US, "%.1f", temp) + "℃)",
                         charging ? "충전기를 빼거나 잠깐 쉬어가세요. 이대로면 성능이 떨어지고 배터리에 무리가 가요."
                                  : "잠깐 쉬거나 그래픽을 낮춰주세요. 이대로면 휴대폰이 스스로 성능을 낮춰요.");
-                if (hud != null) hud.flash("🔥 " + String.format(java.util.Locale.US, "%.0f", temp) + "℃ — 잠깐 쉬어가세요");
+                if (hud != null) hud.flash("과열 " + String.format(java.util.Locale.US, "%.0f", temp) + "℃ — 잠깐 쉬어가세요");
             }
             if (charging || lvl > BAT_ALERT + 5) batArmed = true;
             if (!charging && lvl <= BAT_ALERT && batArmed) {
                 batArmed = false;
                 alert(92, "🔋 배터리 " + lvl + "% 남았어요", "게임이 갑자기 꺼지기 전에 충전기를 연결하세요.");
-                if (hud != null) hud.flash("🔋 배터리 " + lvl + "% — 충전하세요");
+                if (hud != null) hud.flash("배터리 " + lvl + "% — 충전하세요");
             }
         } catch (Exception ignored) {}
     }
@@ -358,7 +382,14 @@ public class SessionService extends Service {
                 new Intent(this, SessionService.class).setAction(ACTION_STOP).putExtra("open", true),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         boolean rec = recording();
-        return new Notification.Builder(this, CH)
+        Notification.Builder nb = new Notification.Builder(this, CH);
+        if (hudClosed && prefs(this).getBoolean("hud", false)) {
+            PendingIntent showHud = PendingIntent.getService(this, 6,
+                    new Intent(this, SessionService.class).setAction(ACTION_SHOW_HUD),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            nb.addAction(new Notification.Action.Builder(null, "HUD 다시 보기", showHud).build());
+        }
+        return nb
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
                 .setContentTitle(label + (rec ? " 기록 중" : " 게임 모드 켜짐"))
                 .setContentText(rec ? "게임을 끝내면 리포트가 나와요" : "게임을 끝내면 설정이 원래대로 돌아와요")

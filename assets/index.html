@@ -284,9 +284,10 @@ nav button .i .ico{width:22px;height:22px}
         <label class="sw"><input type="checkbox" id="recSw" onchange="toggleRec(this)"><span></span></label>
       </div>
       <div class="row">
-        <div><div style="font-weight:700">게임 위에 HUD 띄우기</div><div class="sub">게임하면서 메모리·핑·온도를 작은 창으로 봐요. 끌어서 옮기고 '–'로 접을 수 있어요</div></div>
+        <div><div style="font-weight:700">게임 위에 HUD 띄우기</div><div class="sub">게임하면서 메모리·핑·온도를 작은 창으로 봐요. 끌어서 옮기고, '–'로 접고, '✕'로 닫을 수 있어요</div></div>
         <label class="sw"><input type="checkbox" id="hudSw" onchange="toggleHud(this)"><span></span></label>
       </div>
+      <button class="btn" style="margin-top:10px;padding:11px 14px;font-size:16px" onclick="openHudSet()"><span data-ic="sliders"></span> HUD 모양 설정 <span class="sub" id="hudSetSub" style="font-size:14px"></span></button>
       <div class="row">
         <div><div style="font-weight:700">홈 화면에서 켠 게임도 자동 감지</div><div class="sub">위 게임 목록의 게임을 어디서 켜든 게임 모드·HUD·기록이 자동으로 시작되고, 게임을 나가면 끝나요</div></div>
         <label class="sw"><input type="checkbox" id="autoSw" onchange="toggleAuto(this)"><span></span></label>
@@ -425,6 +426,14 @@ nav button .i .ico{width:22px;height:22px}
     <div class="hd"><b style="font-size:20px"><span data-ic="palette" style="color:var(--violet)"></span> 그래픽 설정 추천</b></div>
     <div class="bd" id="gfxBody"></div>
     <div class="ft"><button class="btn pri" onclick="closeGfx()">닫기</button></div>
+  </div>
+</div>
+
+<div class="modal" id="hudSheet" onclick="if(event.target===this)closeHudSet()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px"><span data-ic="sliders"></span> HUD 모양 설정</b><div class="sub" style="margin-top:4px">다음 게임부터 적용돼요</div></div>
+    <div class="bd" id="hudBody"></div>
+    <div class="ft"><button class="btn pri" onclick="saveHudSet()">저장</button></div>
   </div>
 </div>
 
@@ -838,6 +847,33 @@ function openGfx(){
 }
 function closeGfx(){ $('gfxSheet').classList.remove('on') }
 
+/* ---------- HUD 모양 ---------- */
+let hudSet={size:1,alpha:0,autoMin:true,line:true};
+const HUD_SIZE=['작게','보통','크게'], HUD_ALPHA=['진하게','반투명','투명'];
+function hudSetLabel(){ return `${HUD_SIZE[hudSet.size]} · ${HUD_ALPHA[hudSet.alpha]}${hudSet.autoMin?' · 자동 접기':''}` }
+function loadHudSet(){ if(N&&N.getHudPrefs){ try{ hudSet=Object.assign(hudSet,JSON.parse(N.getHudPrefs())) }catch(e){} } if($('hudSetSub')) $('hudSetSub').textContent='· '+hudSetLabel() }
+function openHudSet(){ loadHudSet(); renderHudSet(); $('hudSheet').classList.add('on') }
+function renderHudSet(){
+  const d=hudSet, seg=(k,names)=>`<div class="seg">${names.map((t,i)=>`<button class="${d[k]===i?'on':''}" onclick="hudSet.${k}=${i};renderHudSet()">${t}</button>`).join('')}</div>`;
+  const a=[.9,.7,.5][d.alpha], sc=[.85,1,1.18][d.size];
+  $('hudBody').innerHTML=`
+    <div class="mlabel" style="margin-top:12px">크기</div>${seg('size',HUD_SIZE)}
+    <div class="mlabel">배경 투명도</div>${seg('alpha',HUD_ALPHA)}
+    <div class="row" style="margin:6px 0 4px"><div><div style="font-weight:700">자동 접기</div><div class="sub">10초 뒤 작은 동그라미로 접혀요. 경고가 생기면 다시 펼쳐져요</div></div>
+      <label class="sw"><input type="checkbox" ${d.autoMin?'checked':''} onchange="hudSet.autoMin=this.checked"><span></span></label></div>
+    <div class="row" style="margin:14px 0 4px"><div><div style="font-weight:700">가로 화면은 한 줄로</div><div class="sub">가로 게임에서는 얇은 한 줄 바로 보여줘요</div></div>
+      <label class="sw"><input type="checkbox" ${d.line?'checked':''} onchange="hudSet.line=this.checked;renderHudSet()"><span></span></label></div>
+    <div class="mlabel" style="margin-top:14px">미리보기</div>
+    <div style="background:linear-gradient(135deg,#3f6212,#166534 40%,#1e3a8a);border-radius:14px;padding:14px;margin:8px 0 14px;overflow:hidden">
+      <div style="display:inline-flex;align-items:center;gap:${7*sc}px;font-size:${11.5*sc}px;font-weight:700;background:rgba(8,12,20,${a});border:1.5px solid var(--cyan);border-radius:12px;padding:${5*sc}px ${10*sc}px;white-space:nowrap;max-width:100%;overflow:hidden">
+        <span style="color:var(--yellow)">${ic('zap')}</span><span>메모리 27%</span><span style="color:var(--green)">51ms</span><span>60Hz</span><span style="color:var(--green)">83% 34.4℃</span><span>06:12</span><span style="color:var(--sub)">– ✕</span>
+      </div>
+      <div class="sub" style="color:#e2e8f0;font-size:12px;margin-top:6px">${d.line?'가로 화면 모양':'가로 화면에서도 세로와 같은 패널로 보여요'}</div>
+    </div>`;
+}
+function saveHudSet(){ if(N&&N.setHudPrefs) N.setHudPrefs(JSON.stringify(hudSet)); closeHudSet(); loadHudSet(); toast('저장했어요 — 다음 게임부터 적용돼요') }
+function closeHudSet(){ $('hudSheet').classList.remove('on') }
+
 /* ---------- 게임별 모드 ---------- */
 let modePkg=null, modeData=null, modeInfo=null, modeWaitOverlay=false;
 function openMode(pkg,label){
@@ -905,6 +941,7 @@ function loadSessions(){
   if(!N||!N.getSessions){sessions=[];}else{try{sessions=JSON.parse(N.getSessions())}catch(e){sessions=[]}}
   if(N&&N.getRecord) $('recSw').checked=N.getRecord();
   if(N&&N.getHud) $('hudSw').checked=N.getHud();
+  loadHudSet();
   if(N&&N.getAutoDetect) $('autoSw').checked=N.getAutoDetect();
   if(N&&N.getAlerts) $('alertSw').checked=N.getAlerts();
   renderSessions();
@@ -1142,6 +1179,7 @@ window.onBack=()=>{
   if($('statSheet').classList.contains('on')){closeStat();return true}
   if($('onb').classList.contains('on')){closeOnb();return true}
   if($('gfxSheet').classList.contains('on')){closeGfx();return true}
+  if($('hudSheet').classList.contains('on')){closeHudSet();return true}
   if($('modeSheet').classList.contains('on')){closeMode();return true}
   if($('repSheet').classList.contains('on')){closeReport();return true}
   if($('upSheet').classList.contains('on')){closeUpdate();return true}
