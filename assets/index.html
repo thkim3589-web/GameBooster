@@ -178,6 +178,14 @@ nav button.on{color:var(--cyan)}
 /* 게임 기록 */
 .sess{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
 .sess .l{flex:1;min-width:0}
+.sess.sel{border-color:var(--cyan)}
+.sessChk{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--sub);display:flex;align-items:center;justify-content:center;color:#04151B}
+.sess.sel .sessChk{background:var(--cyan);border-color:var(--cyan)}
+.sessBar{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
+.sessBar.on{display:flex}
+.sessBtn{flex:none;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;font-size:15px;font-weight:700;white-space:nowrap}
+.sessBtn:disabled{opacity:.5}
+.sessBar .cnt{flex:1;min-width:70px;color:var(--sub);font-size:15px}
 .sess .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}
 .sess .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .chip{font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--card2);color:var(--sub);border:1px solid var(--line)}
@@ -305,7 +313,8 @@ nav button .i .ico{width:22px;height:22px}
       <h3 style="margin:18px 2px 10px;font-size:19px">게임별 통계</h3>
       <div id="statList"></div>
     </div>
-    <h3 style="margin:18px 2px 10px;font-size:19px">최근 게임 기록</h3>
+    <div class="row" style="margin:18px 2px 10px"><h3 style="margin:0;font-size:19px">최근 게임 기록</h3><button class="sessBtn" id="sessEditBtn" style="display:none" onclick="toggleSessEdit()">편집</button></div>
+    <div class="sessBar" id="sessBar"></div>
     <div id="sessList"></div>
   </section>
 
@@ -516,6 +525,7 @@ function mb(b){return Math.round(b/1048576)}
 function status(){ if(!N) return null; try{return JSON.parse(N.getStatus())}catch(e){return null} }
 
 function go(t){
+  if(sessEdit&&t!=='games') toggleSessEdit(false);
   cur=t;
   document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
@@ -1093,14 +1103,40 @@ function openStat(pkg){
 }
 function closeStat(){ $('statSheet').classList.remove('on') }
 
+/* ---------- 기록 여러 개 삭제 ---------- */
+let sessEdit=false, sessSel=new Set(), sessAsk=false;
+function toggleSessEdit(on){ sessEdit=on===undefined?!sessEdit:on; sessSel.clear(); sessAsk=false; renderSessions() }
+function tapSess(id){ if(!sessEdit){openReport(id);return} sessSel.has(id)?sessSel.delete(id):sessSel.add(id); sessAsk=false; renderSessions() }
+function sessAll(){ if(sessSel.size===sessions.length) sessSel.clear(); else sessions.forEach(s=>sessSel.add(s.id)); sessAsk=false; renderSessions() }
+function sessCancelAsk(){ sessAsk=false; renderSessionBar() }
+function sessDelete(){
+  if(!sessSel.size) return;
+  if(!sessAsk){ sessAsk=true; renderSessionBar(); return }
+  const n=sessSel.size;
+  sessSel.forEach(id=>{ if(N) N.deleteSession(String(id)) });
+  sessEdit=false; sessSel.clear(); sessAsk=false;
+  loadSessions(); toast(`기록 ${n}개를 삭제했어요`);
+}
+function renderSessionBar(){
+  const b=$('sessBar'); b.classList.toggle('on',sessEdit); $('sessEditBtn').textContent=sessEdit?'완료':'편집';
+  if(!sessEdit){ b.innerHTML=''; return }
+  const n=sessSel.size;
+  b.innerHTML=sessAsk
+    ?`<span class="cnt" style="color:var(--text)">${n}개를 삭제할까요?</span><button class="sessBtn" onclick="sessCancelAsk()">취소</button><button class="sessBtn" style="color:var(--red)" onclick="sessDelete()">삭제</button>`
+    :`<button class="sessBtn" onclick="sessAll()">${n===sessions.length?'선택 해제':'전체 선택'}</button><span class="cnt">${n}개 선택</span><button class="sessBtn" style="color:${n?'var(--red)':'var(--sub)'}" ${n?'':'disabled'} onclick="sessDelete()">삭제</button>`;
+}
 function renderSessions(){
   renderStats();
+  [...sessSel].forEach(id=>{ if(!sessions.some(s=>s.id===id)) sessSel.delete(id) });
+  if(!sessions.length){ sessEdit=false; sessAsk=false }
+  $('sessEditBtn').style.display=sessions.length?'':'none';
+  renderSessionBar();
   if(!sessions.length){$('sessList').innerHTML='<div class="empty" style="padding:20px 10px">아직 기록이 없어요.<br>위의 게임을 눌러 실행하면 자동으로 기록돼요.</div>';return}
-  $('sessList').innerHTML=sessions.map(s=>`<div class="sess" onclick="openReport(${s.id})">
-    <div class="l"><div class="nm">${esc(s.label)}</div>
+  $('sessList').innerHTML=sessions.map(s=>`<div class="sess${sessSel.has(s.id)?' sel':''}" onclick="tapSess(${s.id})">
+    ${sessEdit?`<div class="sessChk">${sessSel.has(s.id)?ic('check'):''}</div>`:''}<div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
       <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 연결 ${s.adsBlocked}회 차단</span>`:''}</div>
-    </div><div style="font-size:22px;color:var(--sub)">›</div></div>`).join('');
+    </div>${sessEdit?'':'<div style="font-size:22px;color:var(--sub)">›</div>'}</div>`).join('');
 }
 function chartSvg(s){
   const W=340,H=170,pl=34,pr=34,pt=12,pb=26,iw=W-pl-pr,ih=H-pt-pb;
@@ -1233,6 +1269,7 @@ window.onBack=()=>{
   if($('upSheet').classList.contains('on')){closeUpdate();return true}
   if($('picker').classList.contains('on')){closePicker();return true}
   if(editing){toggleEdit();return true}
+  if(sessEdit){toggleSessEdit(false);return true}
   if(cur!=='boost'){go('boost');return true}
   return false;
 };
