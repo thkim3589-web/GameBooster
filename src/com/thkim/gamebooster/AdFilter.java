@@ -93,17 +93,44 @@ public final class AdFilter {
         return -1;
     }
 
-    /** 차단 응답 (NXDOMAIN): 질문을 그대로 돌려주고 '없는 주소'라고 답한다 */
+    /** 휴대폰이 '없는 주소' 답을 기억하는 시간(초). 같은 광고 주소를 계속 다시 묻지 않게 함 */
+    static final int NEG_TTL = 300;
+
+    /**
+     * 차단 응답 (NXDOMAIN): 질문을 그대로 돌려주고 '없는 주소'라고 답한다.
+     * SOA 기록을 붙여서(RFC 2308) 휴대폰 DNS 캐시가 NEG_TTL 동안 기억하게 한다.
+     */
     static byte[] blockedResponse(byte[] dns, int off, int len) {
         int qe = questionEnd(dns, off, len);
         if (qe < 0) return null;
-        byte[] r = new byte[qe - off];
-        System.arraycopy(dns, off, r, 0, r.length);
+        int qlen = qe - off;
+        byte[] r = new byte[qlen + 34];
+        System.arraycopy(dns, off, r, 0, qlen);
         r[2] = (byte) (0x80 | (r[2] & 0x79));      // QR=1, opcode·RD 유지
         r[3] = (byte) (0x80 | 3);                   // RA=1, RCODE=3 (NXDOMAIN)
         r[4] = 0; r[5] = 1;                         // QDCOUNT=1
-        r[6] = 0; r[7] = 0; r[8] = 0; r[9] = 0; r[10] = 0; r[11] = 0;
+        r[6] = 0; r[7] = 0;                         // ANCOUNT=0
+        r[8] = 0; r[9] = 1;                         // NSCOUNT=1 (SOA)
+        r[10] = 0; r[11] = 0;                       // ARCOUNT=0
+        int p = qlen;
+        r[p++] = (byte) 0xC0; r[p++] = 0x0C;        // 이름 = 질문 이름 (압축 포인터)
+        r[p++] = 0; r[p++] = 6;                     // TYPE = SOA
+        r[p++] = 0; r[p++] = 1;                     // CLASS = IN
+        p = putInt(r, p, NEG_TTL);                  // TTL
+        r[p++] = 0; r[p++] = 22;                    // RDLENGTH
+        r[p++] = 0;                                 // MNAME = .
+        r[p++] = 0;                                 // RNAME = .
+        p = putInt(r, p, 1);                        // SERIAL
+        p = putInt(r, p, 3600);                     // REFRESH
+        p = putInt(r, p, 600);                      // RETRY
+        p = putInt(r, p, 86400);                    // EXPIRE
+        putInt(r, p, NEG_TTL);                      // MINIMUM (부정 응답 기억 시간)
         return r;
+    }
+
+    private static int putInt(byte[] b, int p, int v) {
+        b[p] = (byte) (v >>> 24); b[p + 1] = (byte) (v >>> 16); b[p + 2] = (byte) (v >>> 8); b[p + 3] = (byte) v;
+        return p + 4;
     }
 
     // ---------- IPv4 / UDP ----------

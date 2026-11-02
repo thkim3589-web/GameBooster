@@ -1178,7 +1178,7 @@ function openReport(id){
     <div style="margin-top:10px">${chartSvg(s)}</div>
     <div class="rgrid">
       <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>충전 중</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
-      <div class="rbox"><div class="k">시간당 소모</div><div class="v">${s.perHour>=0?s.perHour+'<small>%/h</small>':'<small>5분 이상 필요</small>'}</div></div>
+      <div class="rbox"><div class="k">시간당 소모</div><div class="v">${s.perHour>=0?s.perHour+'<small>%/h</small>':s.charged?'<small>충전 중이라 계산 안 함</small>':'<small>5분 이상 필요</small>'}</div></div>
       <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
