@@ -1099,14 +1099,16 @@ function renderSessions(){
   $('sessList').innerHTML=sessions.map(s=>`<div class="sess" onclick="openReport(${s.id})">
     <div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
-      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 ${s.adsBlocked}회 차단</span>`:''}</div>
+      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 연결 ${s.adsBlocked}회 차단</span>`:''}</div>
     </div><div style="font-size:22px;color:var(--sub)">›</div></div>`).join('');
 }
 function chartSvg(s){
   const W=340,H=170,pl=34,pr=34,pt=12,pb=26,iw=W-pl-pr,ih=H-pt-pb;
   const t=s.t, tp=s.temp, bt=s.bat, T=Math.max(1,t[t.length-1]);
   let tmin=Math.floor(Math.min(...tp)-1), tmax=Math.ceil(Math.max(...tp,s.tMax)+1); if(tmax-tmin<4) tmax=tmin+4;
+  while((tmax-tmin)%3) tmax++; // 눈금 3칸이 정수로 나뉘도록
   let bmin=Math.max(0,Math.floor((Math.min(...bt)-3)/5)*5), bmax=Math.min(100,Math.ceil((Math.max(...bt)+3)/5)*5); if(bmax-bmin<10) bmin=Math.max(0,bmax-10);
+  while((bmax-bmin)%15&&(bmin>0||bmax<100)){ if(bmin>0) bmin-=5; else bmax+=5 } // 눈금이 5% 단위가 되도록
   const X=v=>pl+v/T*iw, YT=v=>pt+(1-(v-tmin)/(tmax-tmin))*ih, YB=v=>pt+(1-(v-bmin)/(bmax-bmin))*ih;
   const line=(arr,Y)=>arr.map((v,i)=>(i?'L':'M')+X(t[i]).toFixed(1)+','+Y(v).toFixed(1)).join('');
   let hot=''; if(tmax>42){const y=YT(Math.min(tmax,Math.max(42,tmin)));hot=`<rect x="${pl}" y="${pt}" width="${iw}" height="${(y-pt).toFixed(1)}" fill="rgba(248,113,113,.10)"/><text x="${pl+4}" y="${pt+13}" font-size="11" fill="#F87171">42℃ 이상 과열</text>`}
@@ -1139,7 +1141,11 @@ function adviceText(s){
   if(s.charged&&s.tMax>=40) a.push(ic('plug','var(--yellow)')+' 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
   if(s.tMax>=42&&!s.charged) a.push(ic('snow','var(--cyan)')+' 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
   if(s.perHour>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
-  if(!a.length) a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
+  if(!a.length){
+    if(s.charged) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 충전 중 기록이라 배터리 소모는 평가하지 않았어요.');
+    else if(s.perHour<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 플레이 시간이 짧아 배터리 소모는 평가하지 않았어요.');
+    else a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
+  }
   return `<div class="advice">${a.join('<br>')}</div>`;
 }
 /* ---------- 광고 차단 진단 ---------- */
@@ -1154,8 +1160,8 @@ function adDiag(s){
   let warn='';
   if(!s.adQueries) warn=`<div class="sub" style="font-size:14px;color:var(--orange);margin-top:6px">${ic('warn')} 게임의 주소 조회가 한 번도 들어오지 않았어요. 휴대폰 설정의 <b>비공개 DNS</b>가 '호스트 이름'으로 되어 있으면 '자동'으로 바꿔주세요.</div>`;
   const rows=list.map(x=>{ const cu=!x.b&&isCustom(x.d), on=x.b||cu;
-    return `<div class="row" style="padding:8px 0;border-top:1px solid var(--line);gap:8px"><div style="min-width:0;flex:1"><div style="font-size:14px;word-break:break-all;color:${on?'var(--green)':'var(--text)'}">${esc(x.d)}</div><div class="sub" style="font-size:12px">${x.n}회${x.b?' · 차단됨':cu?' · 직접 추가 (다음 판부터)':''}</div></div>
-      ${x.b?`<span class="badge ok">차단</span>`:`<button class="go" style="font-size:13px;padding:6px 10px;white-space:nowrap" data-d="${esc(x.d)}" onclick="toggleCustom(this)">${cu?'해제':'차단 추가'}</button>`}</div>` }).join('');
+    return `<div class="row" style="padding:8px 0;border-top:1px solid var(--line);gap:8px"><div style="min-width:0;flex:1"><div style="font-size:14px;word-break:break-all;color:${on?'var(--green)':'var(--text)'}">${esc(x.d)}</div><div class="sub" style="font-size:12px">${x.n}회${cu?' · 직접 추가 (다음 판부터)':''}</div></div>
+      ${x.b?`<span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">차단됨</span>`:`<button class="go" style="font-size:13px;padding:6px 10px;white-space:nowrap" data-d="${esc(x.d)}" onclick="toggleCustom(this)">${cu?'해제':'차단 추가'}</button>`}</div>` }).join('');
   return `<div class="card" style="margin:10px 0;padding:14px">
     <div class="row"><b>${ic('shield','var(--green)')} 광고 차단 진단</b><span class="sub" style="font-size:14px">조회 ${s.adQueries||0}회 · 차단 ${s.adsBlocked}회</span></div>${warn}
     ${list.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-weight:700;font-size:15px">이 게임이 연결한 주소 ${list.length}개 보기</summary>
@@ -1169,6 +1175,11 @@ function toggleCustom(btn){
   toast(on?`${d} 차단 추가 — 다음 판부터 적용돼요`:`${d} 차단 해제`,3500);
 }
 
+function adBlockSub(s){
+  if(!s.adsBlocked) return '이번 판에는 광고 요청이 없었어요';
+  const n=(s.adSeen||[]).filter(x=>x.b).length;
+  return (n?`광고 주소 ${n>=60?'60곳 이상':n+'곳'} · `:'')+'같은 주소의 재시도도 횟수에 포함돼요';
+}
 function openReport(id){
   const s=sessions.find(x=>x.id==id); if(!s) return;
   $('repTitle').textContent=s.label+' 리포트';
@@ -1183,7 +1194,7 @@ function openReport(id){
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
       <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>
-      ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${s.adsBlocked?'이번 판에서 광고 서버 연결을 막았어요':'이번 판에는 광고 요청이 없었어요'}</div></div>`:''}
+      ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 연결 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${adBlockSub(s)}</div></div>`:''}
     </div>
     ${adDiag(s)}${compareText(s)}${adviceText(s)}`;
   $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); toast('기록을 삭제했어요') };
