@@ -50,6 +50,14 @@
         <service
             android:name=".SessionService"
             android:exported="false" />
+        <service
+            android:name=".AdBlockVpn"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

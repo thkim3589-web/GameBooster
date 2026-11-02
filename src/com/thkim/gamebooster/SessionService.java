@@ -106,7 +106,9 @@ public class SessionService extends Service {
         try {
             if (metaFile(c).exists()) finish(c);        // 끝나지 않은 이전 세션 정리 + 설정 복원
             JSONObject mode = GameMode.apply(c, pkg);   // 게임별 모드 적용 (끝나면 복원)
+            boolean adBlock = mode.optBoolean("adBlock") && AdBlockVpn.permitted(c);
             JSONObject m = new JSONObject();
+            m.put("adBlock", adBlock);
             m.put("record", record);
             m.put("keepScreen", mode.optBoolean("keepScreen"));
             m.put("breakMin", mode.optInt("breakMin", 0));
@@ -118,6 +120,7 @@ public class SessionService extends Service {
             m.put("ramAfter", ramAfter);
             try (FileWriter w = new FileWriter(metaFile(c))) { w.write(m.toString()); }
             dataFile(c).delete();
+            if (adBlock) AdBlockVpn.start(c, pkg);     // 이 게임만 광고 차단 (끝나면 해제)
             return true;
         } catch (Exception e) { return false; }
     }
@@ -494,6 +497,8 @@ public class SessionService extends Service {
      */
     static synchronized JSONObject finish(Context c) {
         GameMode.restore(c);   // 방해금지·볼륨 원래대로
+        int adsBlocked = AdBlockVpn.running ? AdBlockVpn.blocked.get() : -1;
+        AdBlockVpn.stop(c);    // 광고 차단 해제
         File mf = metaFile(c);
         if (!mf.exists()) return null;
         try {
@@ -533,6 +538,7 @@ public class SessionService extends Service {
             rep.put("start", meta.getLong("start"));
             rep.put("duration", dur);
             rep.put("boosted", meta.optBoolean("boosted"));
+            if (meta.optBoolean("adBlock") && adsBlocked >= 0) rep.put("adsBlocked", adsBlocked);
             rep.put("freedMb", Math.max(0, (meta.optLong("ramAfter") - meta.optLong("ramBefore")) / 1048576));
             rep.put("batStart", (int) first[2]);
             rep.put("batEnd", (int) last[2]);

@@ -74,6 +74,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 .game .gear{position:absolute;top:6px;left:6px;width:30px;height:30px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:15px;line-height:1}
 .game .gear.own{color:var(--cyan);border-color:var(--cyan)}
 .optgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.optgrid .wide{grid-column:span 2}
 .opt{background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;font-weight:700;font-size:16px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:6px}
 .opt svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2}
 .opt.on{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10)}
@@ -498,7 +499,8 @@ const ICONS={
  plug:'<path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
  warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',
- x:'<path d="M18 6 6 18M6 6l12 12"/>'
+ x:'<path d="M18 6 6 18M6 6l12 12"/>',
+ shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>'
 };
 function ic(n,c){return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${c?` style="color:${c}"`:''}>${ICONS[n]||''}</svg>`}
 function hydrateIcons(root){(root||document).querySelectorAll('[data-ic]').forEach(e=>{e.innerHTML=ic(e.dataset.ic);e.removeAttribute('data-ic')})}
@@ -878,22 +880,24 @@ function closeHudSet(){ $('hudSheet').classList.remove('on') }
 let modePkg=null, modeData=null, modeInfo=null, modeWaitOverlay=false;
 function openMode(pkg,label){
   if(!N||!N.getGameMode){toast('휴대폰 앱에서만 동작해요');return}
-  modePkg=pkg; modeInfo=JSON.parse(N.getGameMode(pkg)); modeData=Object.assign({dnd:false,keepScreen:false,mediaVol:-1,breakMin:0},modeInfo.mode);
+  modePkg=pkg; modeInfo=JSON.parse(N.getGameMode(pkg)); modeData=Object.assign({dnd:false,keepScreen:false,mediaVol:-1,breakMin:0,adBlock:false},modeInfo.mode);
   $('modeTitle').innerHTML=pkg==='_default'?ic('sliders')+' 기본 게임 모드':ic('settings')+' '+esc(label);
   renderMode(); $('modeSheet').classList.add('on');
 }
 function renderMode(){
   const d=modeData, isDef=modePkg==='_default', own=isDef||d.own;
-  const opt=(k,icon,txt)=>`<button class="opt ${d[k]?'on':''}" onclick="toggleOpt('${k}')"><span class="oi">${ic(icon)}</span>${txt}</button>`;
+  const opt=(k,icon,txt,cls)=>`<button class="opt ${d[k]?'on':''} ${cls||''}" onclick="toggleOpt('${k}')"><span class="oi">${ic(icon)}</span>${txt}</button>`;
   const seg=(k,vals)=>`<div class="seg">${vals.map(([v,t])=>`<button class="${d[k]==v?'on':''}" onclick="modeData.${k}=${v};renderMode()">${t}</button>`).join('')}</div>`;
   let warn='';
   if(d.dnd&&!modeInfo.dndGranted) warn+=`<div class="advice" style="margin-top:4px">${ic('belloff','var(--yellow)')} 방해금지 권한이 없어서 아직 동작하지 않아요. <button class="go" style="margin-left:4px" onclick="N.openDndPermission()">허용하기</button></div>`;
+  if(d.adBlock&&!modeInfo.vpn) warn+=`<div class="advice" style="margin-top:4px">${ic('shield','var(--yellow)')} 광고 차단은 처음 한 번 'VPN 연결 요청'을 허용해야 해요. <button class="go" style="margin-left:4px" onclick="askVpn()">허용하기</button></div>`;
   if(d.keepScreen&&!modeInfo.overlay) warn+=`<div class="advice" style="margin-top:4px">${ic('bulb','var(--yellow)')} 화면 켜짐 유지는 '다른 앱 위에 표시' 권한이 필요해요. <button class="go" style="margin-left:4px" onclick="modeWaitOverlay=true;N.openOverlayPermission()">허용하기</button></div>`;
   $('modeBody').innerHTML=(isDef?'':`
     <div class="row" style="margin:12px 0 4px"><div><div style="font-weight:700">이 게임 전용 설정</div><div class="sub">끄면 기본 게임 모드를 따라가요</div></div>
       <label class="sw"><input type="checkbox" ${d.own?'checked':''} onchange="modeData.own=this.checked;renderMode()"><span></span></label></div>`)+`
     <div class="${own?'':'dis'}">
-      <div class="optgrid">${opt('dnd','belloff','방해금지')}${opt('keepScreen','bulb','화면 켜짐 유지')}</div>
+      <div class="optgrid">${opt('dnd','belloff','방해금지')}${opt('keepScreen','bulb','화면 켜짐 유지')}${opt('adBlock','shield','광고 차단 (이 게임만)','wide')}</div>
+      ${d.adBlock?`<div class="sub" style="font-size:14px;margin:-2px 2px 10px;line-height:1.55">${ic('info')} 이 게임의 광고 서버 연결만 막아요. 카톡·문자·전화 등 다른 앱은 영향 없어요.<br>'광고 보고 보상 받기'는 동작하지 않을 수 있어요.</div>`:''}
       <div class="mlabel">${ic('volume')} 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
       <div class="mlabel">${ic('alarm')} 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
       ${warn}
@@ -908,9 +912,10 @@ function pinGame(){
   toast(r==='ok'?'홈 화면에 추가할지 묻는 창이 뜨면 "추가"를 눌러주세요':r==='unsupported'?'이 홈 화면 앱은 바로가기 추가를 지원하지 않아요':'바로가기를 만들 수 없어요',4000);
 }
 function playFromShortcut(j){ try{ const g=JSON.parse(j); closeMode(); closeReport(); go('games'); setTimeout(()=>playGame(g.pkg,g.label),300) }catch(e){} }
-function toggleOpt(k){ modeData[k]=!modeData[k]; renderMode() }
+function toggleOpt(k){ modeData[k]=!modeData[k]; renderMode(); if(k==='adBlock'&&modeData.adBlock&&!modeInfo.vpn) askVpn() }
+function askVpn(){ if(!N||!N.requestVpn) return; const r=N.requestVpn(); if(r==='ok'){ modeInfo.vpn=true; renderMode() } else if(r==='asking') toast('"확인"을 누르면 광고 차단을 쓸 수 있어요',4000) }
 function saveMode(){
-  const m={dnd:!!modeData.dnd,keepScreen:!!modeData.keepScreen,mediaVol:+modeData.mediaVol,breakMin:+modeData.breakMin};
+  const m={dnd:!!modeData.dnd,keepScreen:!!modeData.keepScreen,mediaVol:+modeData.mediaVol,breakMin:+modeData.breakMin,adBlock:!!modeData.adBlock};
   if(modePkg!=='_default') m.own=!!modeData.own;
   N.setGameMode(modePkg,JSON.stringify(m)); closeMode(); toast('저장했어요 — 다음 실행부터 적용돼요'); loadGames();
 }
@@ -1093,7 +1098,7 @@ function renderSessions(){
   $('sessList').innerHTML=sessions.map(s=>`<div class="sess" onclick="openReport(${s.id})">
     <div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
-      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}</div>
+      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 ${s.adsBlocked}회 차단</span>`:''}</div>
     </div><div style="font-size:22px;color:var(--sub)">›</div></div>`).join('');
 }
 function chartSvg(s){
@@ -1150,6 +1155,7 @@ function openReport(id){
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
       <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>
+      ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${s.adsBlocked?'이번 판에서 광고 서버 연결을 막았어요':'이번 판에는 광고 요청이 없었어요'}</div></div>`:''}
     </div>
     ${compareText(s)}${adviceText(s)}`;
   $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); toast('기록을 삭제했어요') };
@@ -1168,7 +1174,7 @@ window.onAppResume=()=>{
   renderPermSub();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
-  if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; renderMode() }
+  if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; modeInfo.vpn=i.vpn; renderMode() }
   if(autoWait){ autoWait=false; if(N.setAutoDetect(true)==='ok'){ $('autoSw').checked=true; toast('자동 감지 켜짐 — 등록한 게임을 어디서 켜든 자동으로 시작돼요',4000) } }
   if(hudWait){ hudWait=false; if(N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 내 게임에서 실행하면 떠요') } }
   if(upWaitPerm){ upWaitPerm=false; if($('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }

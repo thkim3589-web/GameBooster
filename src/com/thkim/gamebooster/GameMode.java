@@ -34,6 +34,7 @@ public class GameMode {
             d.put("keepScreen", false);
             d.put("mediaVol", -1);
             d.put("breakMin", 0);
+            d.put("adBlock", false);
         } catch (Exception ignored) {}
         return d;
     }

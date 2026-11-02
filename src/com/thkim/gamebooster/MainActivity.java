@@ -650,8 +650,20 @@ public class MainActivity extends Activity {
                 o.put("defaults", GameMode.defaults(MainActivity.this));
                 o.put("dndGranted", dndGranted());
                 o.put("overlay", Hud.canShow(MainActivity.this));
+                o.put("vpn", AdBlockVpn.permitted(MainActivity.this));
                 return o.toString();
             } catch (Exception e) { return "{}"; }
+        }
+
+        /** 광고 차단용 VPN 허용 요청. 반환: ok(이미 허용) / asking(허용 창을 띄움) */
+        @JavascriptInterface
+        public String requestVpn() {
+            try {
+                final Intent i = android.net.VpnService.prepare(MainActivity.this);
+                if (i == null) return "ok";
+                runOnUiThread(() -> { try { startActivityForResult(i, 77); } catch (Exception ignored) {} });
+                return "asking";
+            } catch (Exception e) { return "error"; }
         }
 
         @JavascriptInterface
