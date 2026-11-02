@@ -39,11 +39,13 @@ public class AdBlockVpn extends VpnService {
     /** 진단용: 이번 판에 게임이 조회한 주소 → [횟수, 차단여부] */
     static final java.util.concurrent.ConcurrentHashMap<String, int[]> seen = new java.util.concurrent.ConcurrentHashMap<>();
     static volatile boolean running;
+    static volatile boolean revoked;   // 게임 중 다른 VPN이 켜졌거나 사용자가 연결을 끊음
 
     private ParcelFileDescriptor tun;
     private Thread loop;
     private ExecutorService pool;
-    private final List<InetAddress> upstream = new ArrayList<>();
+    private volatile List<InetAddress> upstream = new ArrayList<>();
+    private ConnectivityManager.NetworkCallback netCb;
 
     static void loadCustom(Context c) {
         java.util.Set<String> s = c.getSharedPreferences("gb", MODE_PRIVATE).getStringSet("customBlock", new java.util.HashSet<>());
@@ -72,6 +74,7 @@ public class AdBlockVpn extends VpnService {
         if (ACTION_START.equals(action)) {
             String pkg = intent.getStringExtra("pkg");
             shutdown();
+            revoked = false;
             if (pkg != null && establish(pkg)) return START_NOT_STICKY;
         }
         shutdown();
@@ -82,13 +85,10 @@ public class AdBlockVpn extends VpnService {
     private boolean establish(String pkg) {
         try {
             // VPN을 켜기 전에 원래 DNS 서버를 알아둔다
-            upstream.clear();
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
             Network n = cm.getActiveNetwork();
             LinkProperties lp = n == null ? null : cm.getLinkProperties(n);
-            if (lp != null) for (InetAddress a : lp.getDnsServers()) if (a instanceof Inet4Address) upstream.add(a);
-            upstream.add(InetAddress.getByName("1.1.1.1"));
-            upstream.add(InetAddress.getByName("8.8.8.8"));
+            setUpstream(lp);
 
             Builder b = new Builder()
                     .setSession("게임부스터 광고 차단")
@@ -99,6 +99,11 @@ public class AdBlockVpn extends VpnService {
             b.addAllowedApplication(pkg);            // 이 게임만
             tun = b.establish();
             if (tun == null) return false;
+            // 게임 중 와이파이↔모바일 데이터가 바뀌면 새 연결의 DNS 서버로 바꾼다
+            netCb = new ConnectivityManager.NetworkCallback() {
+                @Override public void onLinkPropertiesChanged(Network net, LinkProperties props) { setUpstream(props); }
+            };
+            cm.registerDefaultNetworkCallback(netCb);
             loadCustom(this);
             blocked.set(0);
             queries.set(0);
@@ -119,6 +124,16 @@ public class AdBlockVpn extends VpnService {
             shutdown();
             return false;
         }
+    }
+
+    private void setUpstream(LinkProperties lp) {
+        List<InetAddress> list = new ArrayList<>();
+        if (lp != null) for (InetAddress a : lp.getDnsServers()) if (a instanceof Inet4Address) list.add(a);
+        try {
+            list.add(InetAddress.getByAddress(new byte[]{1, 1, 1, 1}));
+            list.add(InetAddress.getByAddress(new byte[]{8, 8, 8, 8}));
+        } catch (Exception ignored) {}
+        upstream = list;
     }
 
     private void readLoop() {
@@ -181,6 +196,10 @@ public class AdBlockVpn extends VpnService {
 
     private void shutdown() {
         running = false;
+        if (netCb != null) {
+            try { ((ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE)).unregisterNetworkCallback(netCb); } catch (Exception ignored) {}
+            netCb = null;
+        }
         if (loop != null) { loop.interrupt(); loop = null; }
         if (pool != null) { pool.shutdownNow(); pool = null; }
         if (tun != null) { try { tun.close(); } catch (Exception ignored) {} tun = null; }
@@ -188,6 +207,7 @@ public class AdBlockVpn extends VpnService {
 
     @Override
     public void onRevoke() {      // 다른 VPN이 켜지거나 사용자가 끊음
+        revoked = true;
         shutdown();
         stopSelf();
     }

@@ -419,7 +419,9 @@ public class SessionService extends Service {
         return nb
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
                 .setContentTitle(label + (rec ? " 기록 중" : " 게임 모드 켜짐"))
-                .setContentText(rec ? "게임을 끝내면 리포트가 나와요" : "게임을 끝내면 설정이 원래대로 돌아와요")
+                .setContentText(hasUsageAccess(this)
+                        ? (rec ? "게임을 나가고 잠시 뒤 자동으로 끝나고 리포트가 나와요" : "게임을 나가고 잠시 뒤 설정이 원래대로 돌아와요")
+                        : "끝나면 게임부스터로 돌아오거나 여기서 끝내주세요")
                 .setOngoing(true)
                 .setContentIntent(openApp(2))
                 .addAction(new Notification.Action.Builder(null, rec ? "기록 끝내기" : "게임 모드 끝내기", stop).build())
@@ -557,13 +559,13 @@ public class SessionService extends Service {
             long dur = (System.currentTimeMillis() - meta.getLong("start")) / 1000;
             if (dur < MIN_SEC || rows.size() < 2) { lastShort = true; return null; }
 
-            double tMax = -99, tSum = 0; int hot = 0, thMax = 0; long ramSum = 0; boolean charged = false;
+            double tMax = -99, tSum = 0; int hot = 0, thMax = 0; long ramSum = 0; boolean charged = false; int chargeRows = 0;
             for (double[] r : rows) {
                 tMax = Math.max(tMax, r[1]); tSum += r[1];
                 if (r[1] >= 42) hot++;
                 thMax = Math.max(thMax, (int) r[5]);
                 ramSum += (long) r[4];
-                if (r[3] > 0) charged = true;
+                if (r[3] > 0) { charged = true; chargeRows++; }
             }
             double[] first = rows.get(0), last = rows.get(rows.size() - 1);
             int used = (int) (first[2] - last[2]);
@@ -581,13 +583,14 @@ public class SessionService extends Service {
                 rep.put("adSeen", adSeen);
             }
             if (meta.optBoolean("adWanted") && !adRan)
-                rep.put("adBlockFail", meta.optBoolean("adBlock") ? "notStarted" : "noPermission");
+                rep.put("adBlockFail", AdBlockVpn.revoked ? "revoked" : meta.optBoolean("adBlock") ? "notStarted" : "noPermission");
             rep.put("freedMb", Math.max(0, (meta.optLong("ramAfter") - meta.optLong("ramBefore")) / 1048576));
             rep.put("batStart", (int) first[2]);
             rep.put("batEnd", (int) last[2]);
             rep.put("batUsed", used);
             rep.put("perHour", (!charged && dur >= DRAIN_MIN_SEC && used >= DRAIN_MIN_USED) ? Math.round(used * 3600.0 / dur * 10) / 10.0 : -1);
             rep.put("charged", charged);
+            rep.put("chargedPart", charged && chargeRows < rows.size());   // 일부 구간만 충전
             rep.put("tStart", first[1]);
             rep.put("tEnd", last[1]);
             rep.put("tMax", tMax);

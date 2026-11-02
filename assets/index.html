@@ -302,6 +302,7 @@ nav button .i .ico{width:22px;height:22px}
         <div><div style="font-weight:700">홈 화면에서 켠 게임도 자동 감지</div><div class="sub">위 게임 목록의 게임을 어디서 켜든 게임 모드·HUD·기록이 자동으로 시작되고, 게임을 나가면 끝나요</div></div>
         <label class="sw"><input type="checkbox" id="autoSw" onchange="toggleAuto(this)"><span></span></label>
       </div>
+      <div class="advice" id="usageHint" style="display:none;margin-top:8px"></div>
       <div class="row">
         <div><div style="font-weight:700">게임 중 경고 알림</div><div class="sub">45℃ 이상으로 뜨거워지거나 배터리가 15% 아래로 내려가면 바로 알려줘요</div></div>
         <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
@@ -581,10 +582,15 @@ function onBoostDone(json){
   const r=JSON.parse(json); const b=$('boostBtn'); b.classList.remove('busy');
   if(r.error){$('result').textContent='오류: '+r.error;return}
   const f=mb(r.freed);
-  $('result').innerHTML = (f>=20 ? `메모리 <b>${f}MB</b> 확보!` : `이미 최적 상태예요 <b>${ic('check')}</b>`)
-    + `<div class="sub">백그라운드 정리 완료 (앱 ${r.count}개 확인)${r.dnd?' · 방해금지 ON':''}</div>`;
+  $('result').innerHTML = (f>=20 ? `여유 메모리 <b>+${f}MB</b>` : `정리할 메모리가 거의 없어요 <b>${ic('check')}</b>`)
+    + `<div class="sub">백그라운드 정리 완료 (앱 ${r.count}개 확인)${r.dnd?' · 방해금지 ON':''}</div>`+lastPlayLine();
   $('boostSub').textContent='방금 최적화함';
   setTimeout(renderBoost,200);
+}
+function lastPlayLine(){
+  try{ const s=JSON.parse(N.getSessions())[0]; if(!s) return '';
+    return `<div class="sub" style="font-size:14px;margin-top:4px">최근 ${esc(s.label)}: 최고 ${s.tMax.toFixed(1)}℃${s.adsBlocked>=0?` · 광고 연결 ${s.adsBlocked}회 차단`:''}</div>`
+  }catch(e){ return '' }
 }
 function toggleDnd(el){
   if(!N) return;
@@ -623,7 +629,7 @@ function playGame(pkg,label){
 }
 function onLaunching(json){
   const r=JSON.parse(json||'{}'); const f=r.freed?mb(r.freed):0;
-  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`메모리 ${f}MB 확보 · `:'')+`백그라운드 정리 (앱 ${r.count||0}개 확인)`+(r.recording?'\n기록 시작 — 끝나고 돌아오면 리포트가 나와요':'');
+  $('ovMsg').textContent='게임 시작!'; $('ovSub').textContent=(f>=20?`여유 메모리 +${f}MB · `:'')+`백그라운드 정리 (앱 ${r.count||0}개 확인)`+(r.recording?'\n기록 시작 — 끝나고 돌아오면 리포트가 나와요':'');
   $('ovSub').style.whiteSpace='pre-line';
   setTimeout(()=>$('overlay').classList.remove('on'),1500);
 }
@@ -956,7 +962,13 @@ function toggleHud(el){
 
 /* ---------- 게임 기록 ---------- */
 let sessions=[];
+function renderUsageHint(){
+  const el=$('usageHint'), p=perms(); if(!p) return;
+  el.style.display=p.usage?'none':'block';
+  if(!p.usage) el.innerHTML=`${ic('info','var(--yellow)')} '사용 정보 접근'이 꺼져 있어서 게임을 나가도 기록과 게임 모드가 자동으로 끝나지 않아요. <button class="go" style="margin-left:4px" onclick="N.requestPermission('usage')">허용하기</button>`;
+}
 function loadSessions(){
+  renderUsageHint();
   if(!N||!N.getSessions){sessions=[];}else{try{sessions=JSON.parse(N.getSessions())}catch(e){sessions=[]}}
   if(N&&N.getRecord) $('recSw').checked=N.getRecord();
   if(N&&N.getHud) $('hudSw').checked=N.getHud();
@@ -1079,7 +1091,7 @@ function openStat(pkg){
   const list=sessions.filter(s=>s.pkg===pkg); if(!list.length) return;
   const st=gameStats(list), recent=list.slice(0,10).reverse();
   $('statTitle').textContent=list[0].label+' 통계';
-  $('statSub').textContent=`${st.n}판 · 총 ${fmtDur(st.total)}`;
+  $('statSub').textContent=`저장된 기록 ${st.n}판 · 총 ${fmtDur(st.total)}`;
   const W=340,H=150,pl=8,pr=8,pt=18,pb=22,bw=(W-pl-pr)/Math.max(recent.length,1);
   const tmin=Math.floor(Math.min(...recent.map(s=>s.tMax))-3), tmax=Math.max(43,Math.ceil(Math.max(...recent.map(s=>s.tMax))+1));
   const bars=recent.map((s,i)=>{const h=(s.tMax-tmin)/(tmax-tmin)*(H-pt-pb), x=pl+i*bw+bw*0.15, y=H-pb-h;
@@ -1089,7 +1101,7 @@ function openStat(pkg){
   $('statBody').innerHTML=`
     <div class="tier" style="gap:16px">${ringSvg(st.score)}<div><div class="sub" style="font-size:14px">안정성 점수</div>
       <div style="font-size:20px;font-weight:800;color:${scoreColor(st.score)}">${st.score>=80?'아주 안정적':st.score>=60?'안정적인 편':st.score>=40?'조금 불안정':'불안정'}</div>
-      <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div></div></div>
+      <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div><div class="sub" style="font-size:13px">기록은 전체 게임 합쳐 최근 30판까지 저장되고, 이 안에서 계산해요</div></div></div>
     <div class="coach"><b>코치 한마디</b><br>${coachLines(list,st).join('<br>')}</div>
     <div class="mlabel" style="margin-top:12px">판마다 최고 온도 (최근 ${recent.length}판) <span class="sub" style="font-size:13px;font-weight:600;color:#F87171">- - 42℃ 과열선</span></div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-top:6px">
@@ -1118,7 +1130,7 @@ function sessDelete(){
   const n=sessSel.size;
   sessSel.forEach(id=>{ if(N) N.deleteSession(String(id)) });
   sessEdit=false; sessSel.clear(); sessAsk=false;
-  loadSessions(); toast(`기록 ${n}개를 삭제했어요`);
+  loadSessions(); loadGames(); toast(`기록 ${n}개를 삭제했어요`);
 }
 function renderSessionBar(){
   const b=$('sessBar'); b.classList.toggle('on',sessEdit); $('sessEditBtn').textContent=sessEdit?'완료':'편집';
@@ -1138,7 +1150,7 @@ function renderSessions(){
   $('sessList').innerHTML=sessions.map(s=>`<div class="sess${sessSel.has(s.id)?' sel':''}" onclick="tapSess(${s.id})">
     ${sessEdit?`<div class="sessChk">${sessSel.has(s.id)?ic('check'):''}</div>`:''}<div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
-      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?'충전 중':'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 연결 ${s.adsBlocked}회 차단</span>`:''}</div>
+      <div class="chips"><span class="chip">${ic('battery')} ${s.charged?chargeLabel(s):'-'+s.batUsed+'%'}</span><span class="chip" style="color:${tColor(s.tMax)}">${ic('thermo')} 최고 ${s.tMax.toFixed(1)}℃</span>${s.thermalMax>=3?'<span class="chip" style="color:var(--red)">성능 제한</span>':''}${s.adsBlocked>=0?`<span class="chip" style="color:var(--green)">${ic('shield')} 광고 연결 ${s.adsBlocked}회 차단</span>`:''}</div>
     </div>${sessEdit?'':'<div style="font-size:22px;color:var(--sub)">›</div>'}</div>`).join('');
 }
 function chartSvg(s){
@@ -1160,8 +1172,9 @@ function chartSvg(s){
     <div class="legend"><span><i style="background:#FB923C"></i>배터리 온도</span><span><i style="background:#22D3EE"></i>배터리 잔량</span></div>`;
 }
 /* 시간당 소모: 충전 중이거나 15분 미만, 2% 미만 변화면 믿을 수 없어 계산하지 않음 (옛 기록에도 적용) */
+function chargeLabel(s){ return s.chargedPart?'일부 충전':'충전 중' }
 function drainOf(s){ return (s.charged||!(s.duration>=900)||!(s.batUsed>=2)||!(s.perHour>=0))?-1:s.perHour }
-function drainNote(s){ return s.charged?'충전 중이라 계산 안 함':s.duration<900?'15분 이상 필요':'소모가 적어 계산 안 함' }
+function drainNote(s){ return s.charged?(s.chargedPart?'충전이 섞여 계산 안 함':'충전 중이라 계산 안 함'):s.duration<900?'15분 이상 필요':'소모가 적어 계산 안 함' }
 function compareText(s){
   const prev=sessions.find(x=>x.pkg===s.pkg&&x.id<s.id); if(!prev) return '';
   const out=[];
@@ -1183,7 +1196,7 @@ function adviceText(s){
   if(s.tMax>=42&&!s.charged) a.push(ic('snow','var(--cyan)')+' 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
   if(drainOf(s)>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
   if(!a.length){
-    if(s.charged) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 충전 중 기록이라 배터리 소모는 평가하지 않았어요.');
+    if(s.charged) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. '+(s.chargedPart?'중간에 충전한 기록이라':'충전 중 기록이라')+' 배터리 소모는 평가하지 않았어요.');
     else if(drainOf(s)<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 배터리 소모는 평가하기엔 변화가 작았어요.');
     else a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
   }
@@ -1194,7 +1207,7 @@ let customBlock=[];
 function loadCustomBlock(){ try{ customBlock=N&&N.getCustomBlock?JSON.parse(N.getCustomBlock()):[] }catch(e){ customBlock=[] } }
 function isCustom(d){ return customBlock.some(c=>d===c||d.endsWith('.'+c)) }
 function adDiag(s){
-  if(s.adBlockFail) return `<div class="advice">${ic('warn','var(--orange)')} <b>이번 판은 광고 차단이 켜지지 않았어요.</b><br>${s.adBlockFail==='noPermission'?'VPN 연결을 허용하지 않아서예요. 게임 ⚙ → 광고 차단의 "허용하기"를 눌러주세요.':'VPN을 시작하지 못했어요. 다른 VPN 앱이 켜져 있으면 끄고 다시 해보세요.'}</div>`;
+  if(s.adBlockFail) return `<div class="advice">${ic('warn','var(--orange)')} <b>${s.adBlockFail==='revoked'?'이번 판은 광고 차단이 중간에 끊겼어요.':'이번 판은 광고 차단이 켜지지 않았어요.'}</b><br>${s.adBlockFail==='revoked'?'다른 VPN이 켜졌거나 VPN 연결이 해제되면 이렇게 돼요. 다른 VPN을 끄고 다시 해보세요.':s.adBlockFail==='noPermission'?'VPN 연결을 허용하지 않아서예요. 게임 ⚙ → 광고 차단의 "허용하기"를 눌러주세요.':'VPN을 시작하지 못했어요. 다른 VPN 앱이 켜져 있으면 끄고 다시 해보세요.'}</div>`;
   if(!(s.adsBlocked>=0)) return '';
   loadCustomBlock();
   const list=(s.adSeen||[]);
@@ -1205,9 +1218,19 @@ function adDiag(s){
       ${x.b?`<span style="font-size:13px;font-weight:700;color:var(--green);white-space:nowrap">차단됨</span>`:`<button class="go" style="font-size:13px;padding:6px 10px;white-space:nowrap" data-d="${esc(x.d)}" onclick="toggleCustom(this)">${cu?'해제':'차단 추가'}</button>`}</div>` }).join('');
   return `<div class="card" style="margin:10px 0;padding:14px">
     <div class="row"><b>${ic('shield','var(--green)')} 광고 차단 진단</b><span class="sub" style="font-size:14px">조회 ${s.adQueries||0}회 · 차단 ${s.adsBlocked}회</span></div>${warn}
-    ${list.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-weight:700;font-size:15px">이 게임이 연결한 주소 ${list.length}개 보기</summary>
+    ${adOffBtn(s.pkg)}${list.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-weight:700;font-size:15px">이 게임이 연결한 주소 ${list.length}개 보기</summary>
       <div class="sub" style="font-size:13px;margin:6px 0">광고가 계속 나오면 광고처럼 보이는 주소(ads, ad, adserver 등)를 '차단 추가'하세요. 로그인·게임 서버 주소를 막으면 게임이 안 될 수 있어요.</div>${rows}</details>`:''}
   </div>`;
+}
+function adOffBtn(pkg){
+  let on=true; try{ const i=JSON.parse(N.getGameMode(pkg)); on=!!(i.mode.own?i.mode:i.defaults).adBlock }catch(e){ return '' }
+  return on?`<div class="sub" style="font-size:14px;margin-top:8px">광고를 보고 받는 보상이 안 들어오면 이 게임만 차단을 꺼보세요.</div><button class="go" style="margin-top:6px" data-pkg="${esc(pkg)}" onclick="adOff(this)">이 게임 광고 차단 끄기</button>`
+    :`<div class="sub" style="font-size:14px;margin-top:8px">이 게임은 지금 광고 차단이 꺼져 있어요. 다시 켜려면 게임의 설정을 열어주세요.</div>`;
+}
+function adOff(btn){
+  const pkg=btn.dataset.pkg, i=JSON.parse(N.getGameMode(pkg));
+  N.setGameMode(pkg,JSON.stringify(Object.assign({},i.mode.own?i.mode:i.defaults,{adBlock:false,own:true})));
+  btn.disabled=true; btn.textContent='꺼짐'; toast('다음 실행부터 이 게임은 광고를 막지 않아요',3500); loadGames();
 }
 function toggleCustom(btn){
   const d=btn.dataset.d, on=!isCustom(d);
@@ -1229,7 +1252,7 @@ function openReport(id){
   $('repBody').innerHTML=`
     <div style="margin-top:10px">${chartSvg(s)}</div>
     <div class="rgrid">
-      <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>충전 중</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
+      <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>'+chargeLabel(s)+'</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
       <div class="rbox"><div class="k">시간당 소모</div><div class="v">${drainOf(s)>=0?s.perHour+'<small>%/h</small>':'<small>'+drainNote(s)+'</small>'}</div></div>
       <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
@@ -1238,7 +1261,7 @@ function openReport(id){
       ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 연결 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${adBlockSub(s)}</div></div>`:''}
     </div>
     ${adDiag(s)}${compareText(s)}${adviceText(s)}`;
-  $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); toast('기록을 삭제했어요') };
+  $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); loadGames(); toast('기록을 삭제했어요') };
   $('repSheet').classList.add('on');
 }
 function closeReport(){$('repSheet').classList.remove('on')}
@@ -1252,7 +1275,7 @@ function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록�
 window.onAppResume=()=>{
   $('overlay').classList.remove('on');   // 게임에서 돌아왔을 때 실행 안내가 남지 않게
   if($('onb').classList.contains('on')) renderOnb();
-  renderPermSub();
+  renderPermSub(); renderUsageHint();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
   if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; modeInfo.vpn=i.vpn; renderMode() }
