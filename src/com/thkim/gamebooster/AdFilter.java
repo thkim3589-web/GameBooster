@@ -15,17 +15,19 @@ public final class AdFilter {
     static final String[] BLOCK = {
             // Google AdMob / Ad Manager
             "doubleclick.net", "googlesyndication.com", "googleadservices.com", "googletagservices.com",
-            "adservice.google.com", "pagead2.googlesyndication.com",
+            "adservice.google.com", "adservice.google.co.kr", "pagead2.googlesyndication.com", "imasdk.googleapis.com",
             // Unity Ads (광고 전용 하위 도메인만)
-            "unityads.unity3d.com", "ads.prd.ie.internal.unity3d.com",
+            "unityads.unity3d.com", "ads.unity3d.com", "ads.prd.ie.internal.unity3d.com",
             // AppLovin / MAX
-            "applovin.com", "applvn.com",
+            "applovin.com", "applvn.com", "safedk.com",
             // ironSource
-            "supersonicads.com", "ironsrc.mobi",
+            "supersonicads.com", "ironsrc.mobi", "ironsrc.com",
             // Vungle / Liftoff, Chartboost, AdColony, InMobi
             "vungle.com", "chartboost.com", "adcolony.com", "inmobi.com",
             // Mintegral
-            "mintegral.com", "rayjump.com", "mtgglobals.com",
+            "mintegral.com", "mintegral.net", "rayjump.com", "mtgglobals.com",
+            // Liftoff, Moloco, Verve, Ogury, Digital Turbine
+            "liftoff.io", "liftoff-creatives.io", "moloco.com", "pubnative.net", "ogury.io", "ogury.co", "digitalturbine.com",
             // Pangle (광고 전용)
             "pangle.io", "pangolin-sdk-toutiao.com", "pangolin-sdk-toutiao-b.com",
             // Meta Audience Network (광고 전용 하위 도메인만)
@@ -37,6 +39,9 @@ public final class AdFilter {
             "ad.daum.net", "adfit.kakao.com", "adpopcorn.com", "cauly.co.kr",
     };
 
+    /** 사용자가 직접 추가한 차단 주소 */
+    static volatile String[] custom = new String[0];
+
     static boolean isBlocked(String name) {
         if (name == null || name.isEmpty()) return false;
         String n = name.toLowerCase(Locale.ROOT);
@@ -44,6 +49,15 @@ public final class AdFilter {
         for (String d : BLOCK) {
             if (n.equals(d) || n.endsWith("." + d)) return true;
         }
+        for (String d : custom) {
+            if (n.equals(d) || n.endsWith("." + d)) return true;
+        }
+        return false;
+    }
+
+    static boolean isBuiltIn(String name) {
+        String n = name.toLowerCase(Locale.ROOT);
+        for (String d : BLOCK) if (n.equals(d) || n.endsWith("." + d)) return true;
         return false;
     }
 

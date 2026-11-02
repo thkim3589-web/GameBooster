@@ -106,9 +106,11 @@ public class SessionService extends Service {
         try {
             if (metaFile(c).exists()) finish(c);        // 끝나지 않은 이전 세션 정리 + 설정 복원
             JSONObject mode = GameMode.apply(c, pkg);   // 게임별 모드 적용 (끝나면 복원)
-            boolean adBlock = mode.optBoolean("adBlock") && AdBlockVpn.permitted(c);
+            boolean adWanted = mode.optBoolean("adBlock");
+            boolean adBlock = adWanted && AdBlockVpn.permitted(c);
             JSONObject m = new JSONObject();
             m.put("adBlock", adBlock);
+            m.put("adWanted", adWanted);
             m.put("record", record);
             m.put("keepScreen", mode.optBoolean("keepScreen"));
             m.put("breakMin", mode.optInt("breakMin", 0));
@@ -497,7 +499,18 @@ public class SessionService extends Service {
      */
     static synchronized JSONObject finish(Context c) {
         GameMode.restore(c);   // 방해금지·볼륨 원래대로
-        int adsBlocked = AdBlockVpn.running ? AdBlockVpn.blocked.get() : -1;
+        boolean adRan = AdBlockVpn.running;
+        int adsBlocked = adRan ? AdBlockVpn.blocked.get() : -1;
+        int adQueries = adRan ? AdBlockVpn.queries.get() : 0;
+        JSONArray adSeen = new JSONArray();
+        if (adRan) {
+            List<java.util.Map.Entry<String, int[]>> es = new ArrayList<>(AdBlockVpn.seen.entrySet());
+            java.util.Collections.sort(es, (x, y) -> (y.getValue()[1] - x.getValue()[1]) != 0 ? y.getValue()[1] - x.getValue()[1] : y.getValue()[0] - x.getValue()[0]);
+            for (int i = 0; i < es.size() && i < 60; i++) {
+                try { adSeen.put(new JSONObject().put("d", es.get(i).getKey()).put("n", es.get(i).getValue()[0]).put("b", es.get(i).getValue()[1] == 1)); }
+                catch (Exception ignored) {}
+            }
+        }
         AdBlockVpn.stop(c);    // 광고 차단 해제
         File mf = metaFile(c);
         if (!mf.exists()) return null;
@@ -538,7 +551,13 @@ public class SessionService extends Service {
             rep.put("start", meta.getLong("start"));
             rep.put("duration", dur);
             rep.put("boosted", meta.optBoolean("boosted"));
-            if (meta.optBoolean("adBlock") && adsBlocked >= 0) rep.put("adsBlocked", adsBlocked);
+            if (meta.optBoolean("adBlock") && adsBlocked >= 0) {
+                rep.put("adsBlocked", adsBlocked);
+                rep.put("adQueries", adQueries);
+                rep.put("adSeen", adSeen);
+            }
+            if (meta.optBoolean("adWanted") && !adRan)
+                rep.put("adBlockFail", meta.optBoolean("adBlock") ? "notStarted" : "noPermission");
             rep.put("freedMb", Math.max(0, (meta.optLong("ramAfter") - meta.optLong("ramBefore")) / 1048576));
             rep.put("batStart", (int) first[2]);
             rep.put("batEnd", (int) last[2]);

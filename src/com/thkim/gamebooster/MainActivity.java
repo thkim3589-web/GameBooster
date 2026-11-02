@@ -655,6 +655,22 @@ public class MainActivity extends Activity {
             } catch (Exception e) { return "{}"; }
         }
 
+        @JavascriptInterface
+        public String getCustomBlock() {
+            return new JSONArray(prefs.getStringSet("customBlock", new java.util.HashSet<>())).toString();
+        }
+
+        /** 진단에서 고른 주소를 차단 목록에 추가/해제 */
+        @JavascriptInterface
+        public void setCustomBlock(String domain, boolean on) {
+            String d = domain == null ? "" : domain.trim().toLowerCase(java.util.Locale.ROOT);
+            if (d.isEmpty() || !d.contains(".")) return;
+            java.util.Set<String> s = new java.util.HashSet<>(prefs.getStringSet("customBlock", new java.util.HashSet<>()));
+            if (on) s.add(d); else s.remove(d);
+            prefs.edit().putStringSet("customBlock", s).apply();
+            AdBlockVpn.loadCustom(MainActivity.this);   // 게임 중이면 바로 적용
+        }
+
         /** 광고 차단용 VPN 허용 요청. 반환: ok(이미 허용) / asking(허용 창을 띄움) */
         @JavascriptInterface
         public String requestVpn() {

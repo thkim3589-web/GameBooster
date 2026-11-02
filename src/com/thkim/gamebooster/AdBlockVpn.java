@@ -35,12 +35,20 @@ public class AdBlockVpn extends VpnService {
     private static final String FAKE_DNS = "10.215.173.2";
 
     static final AtomicInteger blocked = new AtomicInteger();
+    static final AtomicInteger queries = new AtomicInteger();
+    /** 진단용: 이번 판에 게임이 조회한 주소 → [횟수, 차단여부] */
+    static final java.util.concurrent.ConcurrentHashMap<String, int[]> seen = new java.util.concurrent.ConcurrentHashMap<>();
     static volatile boolean running;
 
     private ParcelFileDescriptor tun;
     private Thread loop;
     private ExecutorService pool;
     private final List<InetAddress> upstream = new ArrayList<>();
+
+    static void loadCustom(Context c) {
+        java.util.Set<String> s = c.getSharedPreferences("gb", MODE_PRIVATE).getStringSet("customBlock", new java.util.HashSet<>());
+        AdFilter.custom = s.toArray(new String[0]);
+    }
 
     /** 사용자가 VPN 사용을 허용했는지 */
     static boolean permitted(Context c) {
@@ -91,7 +99,10 @@ public class AdBlockVpn extends VpnService {
             b.addAllowedApplication(pkg);            // 이 게임만
             tun = b.establish();
             if (tun == null) return false;
+            loadCustom(this);
             blocked.set(0);
+            queries.set(0);
+            seen.clear();
             running = true;
             pool = Executors.newFixedThreadPool(4);
             loop = new Thread(this::readLoop, "adblock");
@@ -131,7 +142,13 @@ public class AdBlockVpn extends VpnService {
         int dlen = pkt.length - off;
         byte[] answer;
         String name = AdFilter.queryName(pkt, off, dlen);
-        if (AdFilter.isBlocked(name)) {
+        boolean isAd = AdFilter.isBlocked(name);
+        queries.incrementAndGet();
+        if (name != null && seen.size() < 300) {
+            int[] v = seen.computeIfAbsent(name.toLowerCase(java.util.Locale.ROOT), k -> new int[]{0, isAd ? 1 : 0});
+            synchronized (v) { v[0]++; }
+        }
+        if (isAd) {
             answer = AdFilter.blockedResponse(pkt, off, dlen);
             blocked.incrementAndGet();
         } else {
