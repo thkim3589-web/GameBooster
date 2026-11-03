@@ -33,6 +33,61 @@ final class FpsTest {
 
     private FpsTest() {}
 
+    // ---------- 게임 기록에 FPS 포함 (설정을 켠 경우) ----------
+    private static final class Session { volatile boolean stop; final FpsCalc.Stream stream = new FpsCalc.Stream(); }
+    private static volatile Session session;
+
+    static void startSession(Context c, String pkg) {
+        endSession();
+        try {
+            if (running || !c.getSharedPreferences("gb", Context.MODE_PRIVATE).getBoolean("fpsLog", false)) return;
+            if (!Shizuku.pingBinder() || Shizuku.isPreV11() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) return;
+            final IShizukuService svc = IShizukuService.Stub.asInterface(Shizuku.getBinder());
+            if (svc == null) return;
+            final Session s = new Session();
+            session = s;
+            new Thread(() -> capture(svc, pkg, s), "fps-session").start();
+        } catch (Throwable ignored) {}
+    }
+
+    /** 기록을 끝내고 결과를 돌려준다 (측정하지 않았으면 null) */
+    static FpsCalc.Result endSession() {
+        Session s = session;
+        session = null;
+        if (s == null) return null;
+        s.stop = true;
+        FpsCalc.Result r = s.stream.result();
+        return r.ok ? r : null;
+    }
+
+    private static void capture(IShizukuService svc, String pkg, Session s) {
+        String layer = null;
+        int idle = 0;
+        long waitUntil = System.currentTimeMillis() + LOAD_WAIT_MS;
+        while (!s.stop && System.currentTimeMillis() < waitUntil) nap(200);
+        while (!s.stop) {
+            try {
+                if (layer == null) {
+                    // 프레임이 들어오는 화면을 찾는다
+                    for (String l : FpsCalc.candidates(run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--list"}), pkg, 4)) {
+                        TreeSet<Long> t = new TreeSet<>();
+                        FpsCalc.parseLatency(run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--latency", l}), t);
+                        if (t.size() >= 10) { layer = l; break; }
+                    }
+                } else {
+                    TreeSet<Long> t = new TreeSet<>();
+                    FpsCalc.parseLatency(run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--latency", layer}), t);
+                    for (long v : t) s.stream.add(v);
+                    idle = t.isEmpty() ? idle + 1 : 0;
+                    if (idle >= 5) { layer = null; idle = 0; }   // 게임을 다시 켜면 화면 이름이 바뀔 수 있음
+                }
+            } catch (Throwable ignored) {}
+            nap(TICK_MS);
+        }
+    }
+
+    private static void nap(long ms) { try { Thread.sleep(ms); } catch (InterruptedException ignored) {} }
+
     static boolean isRunning() { return running; }
 
     static JSONObject status(Context c) throws Exception {

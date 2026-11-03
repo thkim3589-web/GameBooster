@@ -676,6 +676,7 @@ function renderFps(){
     +step(s.alive,'Shizuku 시작 (무선 디버깅)',s.installed?`<button class="sessBtn" onclick="N.openShizuku()">열기</button>`:'')
     +step(s.allowed,'게임부스터 권한 허용',s.alive?`<button class="sessBtn" onclick="N.fpsRequestPermission()">허용</button>`:'');
   if(s.old) h+=`<div class="sub" style="color:var(--orange)">Shizuku 버전이 오래됐어요. 최신 버전으로 업데이트해 주세요.</div>`;
+  if(s.allowed) h+=`<div class="row" style="margin-top:8px"><div><div style="font-weight:700">게임 기록에 FPS 포함</div><div class="sub">리포트에 평균 FPS와 끊김을 함께 남겨요. Shizuku가 켜져 있을 때만 동작해요</div></div><label class="sw"><input type="checkbox" ${N.getFpsLog&&N.getFpsLog()?'checked':''} onchange="N.setFpsLog(this.checked)"><span></span></label></div>`;
   if(s.running) h+=`<div class="advice" style="margin-top:8px">측정 중이에요. 게임을 45초쯤 플레이한 뒤 돌아오세요. 끝나면 알림이 와요.</div>`;
   else if(s.allowed){
     const list=fpsGames.length?fpsGames:[];
@@ -1197,7 +1198,8 @@ function gameStats(list){
   score=Math.max(0,Math.min(100,Math.round(score)));
   // 처음으로 42℃를 넘은 시점(분)
   const onsets=list.map(s=>{ if(!s.temp) return null; const i=s.temp.findIndex(t=>t>=42); return i<0?null:s.t[i]/60 }).filter(x=>x!==null);
-  return {n,total:durs.reduce((a,b)=>a+b,0),avgDur:avg(durs),tAvg,drain:drains.length?avg(drains):-1,throttled,score,onsets,hotAvg};
+  const fpsL=list.filter(s=>s.fpsAvg>0).map(s=>s.fpsAvg);
+  return {fps:fpsL.length?avg(fpsL):0,n,total:durs.reduce((a,b)=>a+b,0),avgDur:avg(durs),tAvg,drain:drains.length?avg(drains):-1,throttled,score,onsets,hotAvg};
 }
 function scoreColor(v){return v>=80?'var(--green)':v>=60?'var(--cyan)':v>=40?'var(--orange)':'var(--red)'}
 function ringSvg(v){const c=2*Math.PI*24;return `<div class="sring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="24" fill="none" stroke="#17223B" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" stroke="${scoreColor(v)}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-v/100)}"/></svg><b style="color:${scoreColor(v)}">${v}</b></div>`}
@@ -1261,6 +1263,7 @@ function openStat(pkg){
       <div class="rbox"><div class="k">평균 플레이</div><div class="v">${Math.round(st.avgDur/60)}<small>분</small></div></div>
       <div class="rbox"><div class="k">평균 최고 온도</div><div class="v" style="color:${tColor(st.tAvg)}">${st.tAvg.toFixed(1)}<small>℃</small></div></div>
       <div class="rbox"><div class="k">시간당 배터리</div><div class="v">${st.drain>=0?Math.round(st.drain)+'<small>%/h</small>':'<small>기록 부족</small>'}</div></div>
+      ${st.fps?`<div class="rbox" style="grid-column:span 2"><div class="k">평균 FPS (실측)</div><div class="v">${st.fps.toFixed(1)}</div></div>`:''}
       <div class="rbox"><div class="k">성능 제한</div><div class="v" style="color:${st.throttled?'var(--red)':'var(--green)'}">${st.throttled}<small>/${st.n}판</small></div></div>
     </div>`;
   $('statSheet').classList.add('on');
@@ -1344,6 +1347,8 @@ function compareText(s){
   if(drainOf(s)>=0&&drainOf(prev)>=0){const d=Math.round((s.perHour-prev.perHour)*10)/10;
     if(Math.abs(d)>=1) out.push(`배터리 소모 시간당 ${Math.abs(d)}% ${d<0?'<b style="color:var(--green)">적음</b>':'<b style="color:var(--orange)">많음</b>'}`);
     else out.push('배터리 소모 비슷함');}
+  if(s.fpsAvg>0&&prev.fpsAvg>0){const d=Math.round((s.fpsAvg-prev.fpsAvg)*10)/10;
+    out.push(Math.abs(d)>=3?`평균 FPS ${Math.abs(d)} ${d>0?'<b style="color:var(--green)">높음</b>':'<b style="color:var(--orange)">낮음</b>'}`:'평균 FPS 비슷함');}
   const dh=Math.round((s.hotMin-prev.hotMin)*10)/10;
   if(Math.abs(dh)>=1) out.push(`과열 시간 ${Math.abs(dh)}분 ${dh<0?'<b style="color:var(--green)">줄어듦</b>':'<b style="color:var(--orange)">늘어남</b>'}`);
   const tag=(prev.boosted?'부스트 O':'부스트 X')+' → '+(s.boosted?'부스트 O':'부스트 X');
@@ -1419,6 +1424,7 @@ function openReport(id){
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thFrom>=0?`성능 제한 ${Math.floor(s.thFrom/60)}~${Math.ceil(s.thTo/60)}분`:s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
       <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>
       ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 연결 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${adBlockSub(s)}</div></div>`:''}
+      ${s.fpsAvg>0?`<div class="rbox" style="grid-column:span 2"><div class="k">FPS (실측)</div><div class="v">${s.fpsAvg}<small> 평균</small></div><div class="sub" style="font-size:14px">하위 1% ${s.fpsLow} · 끊김 ${s.fpsStutters}회</div></div>`:''}
     </div>
     ${adDiag(s)}${compareText(s)}${adviceText(s)}`;
   $('repDel').onclick=()=>{ if(N) N.deleteSession(String(s.id)); closeReport(); loadSessions(); loadGames(); toast('기록을 삭제했어요') };

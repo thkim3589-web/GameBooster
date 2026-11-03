@@ -10,6 +10,45 @@ import java.util.Set;
 final class FpsCalc {
     private FpsCalc() {}
 
+    /** 긴 게임용: 시각을 모두 저장하지 않고 누적 계산. 1초 넘는 공백(게임을 나감 등)은 제외 */
+    static final class Stream {
+        private long last, activeNs;
+        private int frames;
+        private final int[] hist = new int[1001];   // 프레임 간격(ms) 분포
+
+        synchronized void add(long t) {
+            if (t <= last) return;
+            if (last > 0) {
+                long gap = t - last;
+                if (gap <= 1_000_000_000L) {
+                    frames++;
+                    activeNs += gap;
+                    hist[(int) Math.min(1000, Math.round(gap / 1e6))]++;
+                }
+            }
+            last = t;
+        }
+
+        synchronized Result result() {
+            Result r = new Result();
+            r.frames = frames;
+            if (frames < 30 || activeNs <= 0) return r;
+            r.seconds = activeNs / 1e9;
+            r.avgFps = frames / r.seconds;
+            int seen = 0, median = 0, p99 = 0;
+            for (int ms = 0; ms <= 1000; ms++) {
+                int before = seen;
+                seen += hist[ms];
+                if (before < frames / 2 && seen >= frames / 2) median = ms;
+                if (before < frames * 0.99 && seen >= frames * 0.99) p99 = ms;
+            }
+            r.low1Fps = p99 > 0 ? 1000.0 / p99 : 0;
+            for (int ms = median * 2 + 1; ms <= 1000; ms++) r.stutters += hist[ms];
+            r.ok = true;
+            return r;
+        }
+    }
+
     /** 계산 결과. frames가 부족하면 ok=false */
     static final class Result {
         boolean ok; int frames; double avgFps, low1Fps; int stutters; double seconds;

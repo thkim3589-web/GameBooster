@@ -799,6 +799,12 @@ public class MainActivity extends Activity {
         public void fpsStop() { FpsTest.stop(); }
 
         @JavascriptInterface
+        public boolean getFpsLog() { return prefs.getBoolean("fpsLog", false); }
+
+        @JavascriptInterface
+        public void setFpsLog(boolean on) { prefs.edit().putBoolean("fpsLog", on).apply(); }
+
+        @JavascriptInterface
         public String fpsResult() { return prefs.getString("fpsLast", ""); }
 
         /** Shizuku 앱 열기, 없으면 설치 페이지 */

@@ -127,6 +127,7 @@ public class SessionService extends Service {
             try (FileWriter w = new FileWriter(metaFile(c))) { w.write(m.toString()); }
             dataFile(c).delete();
             if (adBlock) AdBlockVpn.start(c, pkg);     // 이 게임만 광고 차단 (끝나면 해제)
+            if (record) FpsTest.startSession(c, pkg);  // 사용자가 켠 경우에만 FPS 기록
             return true;
         } catch (Exception e) { return false; }
     }
@@ -540,6 +541,7 @@ public class SessionService extends Service {
      */
     static synchronized JSONObject finish(Context c) {
         lastShort = false;
+        FpsCalc.Result fps = FpsTest.endSession();
         GameMode.restore(c);   // 방해금지·볼륨 원래대로
         boolean adRan = AdBlockVpn.running;
         int adsBlocked = adRan ? AdBlockVpn.blocked.get() : -1;
@@ -616,6 +618,11 @@ public class SessionService extends Service {
             rep.put("tAvg", Math.round(tSum / rows.size() * 10) / 10.0);
             rep.put("hotMin", Math.round(hot * INTERVAL_MS / 60000.0 * 10) / 10.0);
             rep.put("thermalMax", thMax);
+            if (fps != null) {
+                rep.put("fpsAvg", Math.round(fps.avgFps * 10) / 10.0);
+                rep.put("fpsLow", Math.round(fps.low1Fps * 10) / 10.0);
+                rep.put("fpsStutters", fps.stutters);
+            }
             rep.put("thFrom", thFrom);   // 성능 제한 구간(초), 없으면 -1
             rep.put("thTo", thTo);
             rep.put("ramAvgMb", ramSum / rows.size());
