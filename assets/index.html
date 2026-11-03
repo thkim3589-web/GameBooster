@@ -181,6 +181,7 @@ nav button.on{color:var(--cyan)}
 .sess.sel{border-color:var(--cyan)}
 .sessChk{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--sub);display:flex;align-items:center;justify-content:center;color:#04151B}
 .sess.sel .sessChk{background:var(--cyan);border-color:var(--cyan)}
+.secT{margin:18px 2px 10px;font-size:19px}
 .sessBar{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
 .sessBar.on{display:flex}
 .sessBtn{flex:none;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;font-size:15px;font-weight:700;white-space:nowrap}
@@ -240,8 +241,35 @@ nav button .i .ico{width:22px;height:22px}
 </div>
 
 <main>
-  <!-- 탭1 부스트 -->
-  <section class="tab on" id="t-boost">
+  <!-- 탭1 게임 -->
+  <section class="tab on" id="t-games">
+    <div class="row" style="margin-bottom:12px">
+      <div class="sub">게임을 누르면 <b style="color:var(--cyan)">부스트 후 실행</b>돼요</div>
+      <button class="go btn" style="width:auto;padding:8px 14px;font-size:16px" id="editBtn" onclick="toggleEdit()">편집</button>
+    </div>
+    <div class="grid" id="gameGrid"></div>
+    <div id="gameEmpty" class="empty" style="display:none">
+      <div style="font-size:48px;color:var(--cyan)"><span data-ic="gamepad"></span></div>
+      등록된 게임이 없어요.<br>아래 버튼으로 게임을 추가하세요.
+    </div>
+    <button class="btn pri" style="margin-top:16px" onclick="openPicker()">＋ 게임 추가</button>
+    <div class="sub" style="text-align:center;margin-top:8px;font-size:14px">게임별 설정은 아이콘의 <span data-ic="settings"></span> 를 누르세요</div>
+  </section>
+
+  <!-- 탭2 기록 -->
+  <section class="tab" id="t-records">
+    <div id="statWrap" style="display:none">
+      <h3 class="secT" style="margin-top:0">게임별 통계</h3>
+      <div id="statList"></div>
+    </div>
+    <div class="row" style="margin:18px 2px 10px"><h3 style="margin:0;font-size:19px">최근 게임 기록</h3><button class="sessBtn" id="sessEditBtn" style="display:none" onclick="toggleSessEdit()">편집</button></div>
+    <div class="sessBar" id="sessBar"></div>
+    <div id="sessList"></div>
+    <button class="btn" style="margin-top:6px" onclick="openGfx()"><span data-ic="palette" style="color:var(--violet)"></span> 그래픽 설정 추천 보기</button>
+  </section>
+
+  <!-- 탭3 도구 -->
+  <section class="tab" id="t-tools">
     <div class="card">
       <div class="ringwrap">
         <div class="ring">
@@ -257,114 +285,88 @@ nav button .i .ico{width:22px;height:22px}
         <div class="result" id="result"></div>
       </div>
     </div>
-
     <div class="card">
-      <div class="row">
-        <div><div style="font-weight:700">방해금지 모드</div><div class="sub" id="dndSub">게임 중 알림·전화 차단</div></div>
-        <label class="sw"><input type="checkbox" id="dndSw" onchange="toggleDnd(this)"><span></span></label>
-      </div>
-      <div class="row">
-        <div><div style="font-weight:700">부스트할 때 자동으로 켜기</div><div class="sub">부스트·게임 실행 시 방해금지 ON</div></div>
-        <label class="sw"><input type="checkbox" id="autoDndSw" onchange="toggleAutoDnd(this)"><span></span></label>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>게임 전 점검</h3>
+      <h3>지금 상태 점검</h3>
       <div id="checks"></div>
     </div>
-  </section>
-
-  <!-- 탭2 내 게임 -->
-  <section class="tab" id="t-games">
-    <div class="row" style="margin-bottom:12px">
-      <div class="sub">게임을 누르면 <b style="color:var(--cyan)">부스트 후 실행</b>돼요</div>
-      <button class="go btn" style="width:auto;padding:8px 14px;font-size:16px" id="editBtn" onclick="toggleEdit()">편집</button>
-    </div>
-    <div class="grid" id="gameGrid"></div>
-    <div id="gameEmpty" class="empty" style="display:none">
-      <div style="font-size:48px;color:var(--cyan)"><span data-ic="gamepad"></span></div>
-      등록된 게임이 없어요.<br>아래 버튼으로 게임을 추가하세요.
-    </div>
-    <button class="btn pri" style="margin-top:16px" onclick="openPicker()">＋ 게임 추가</button>
-
-    <div class="card" style="margin-top:18px">
-      <div class="row">
-        <div><div style="font-weight:700">게임 기록하기</div><div class="sub">게임 중 온도·배터리를 기록해 끝나면 리포트로 보여줘요</div></div>
-        <label class="sw"><input type="checkbox" id="recSw" onchange="toggleRec(this)"><span></span></label>
-      </div>
-      <div class="row">
-        <div><div style="font-weight:700">게임 위에 HUD 띄우기</div><div class="sub">게임하면서 메모리·핑·온도를 작은 창으로 봐요. 끌어서 옮기고, '–'로 접고, '✕'로 닫을 수 있어요</div></div>
-        <label class="sw"><input type="checkbox" id="hudSw" onchange="toggleHud(this)"><span></span></label>
-      </div>
-      <button class="btn" style="margin-top:10px;padding:11px 14px;font-size:16px" onclick="openHudSet()"><span data-ic="sliders"></span> HUD 모양 설정 <span class="sub" id="hudSetSub" style="font-size:14px"></span></button>
-      <div class="row">
-        <div><div style="font-weight:700">홈 화면에서 켠 게임도 자동 감지</div><div class="sub">위 게임 목록의 게임을 어디서 켜든 게임 모드·HUD·기록이 자동으로 시작되고, 게임을 나가면 끝나요</div></div>
-        <label class="sw"><input type="checkbox" id="autoSw" onchange="toggleAuto(this)"><span></span></label>
-      </div>
-      <div class="advice" id="usageHint" style="display:none;margin-top:8px"></div>
-      <div class="row">
-        <div><div style="font-weight:700">게임 중 경고 알림</div><div class="sub">45℃ 이상으로 뜨거워지거나 배터리가 15% 아래로 내려가면 바로 알려줘요</div></div>
-        <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
-      </div>
-      <div class="row">
-        <div><div style="font-weight:700">성능 제한 알림</div><div class="sub">발열로 성능이 낮아질 수 있을 때 게임 중에 알려줘요. 꺼도 리포트에는 기록돼요</div></div>
-        <label class="sw"><input type="checkbox" id="thermalSw" onchange="N&&N.setThermalAlert(this.checked)"><span></span></label>
-      </div>
-      <div class="row">
-        <div><div style="font-weight:700">게임 실행 전 점검</div><div class="sub">절전 모드·온도·인터넷 등에 문제가 있을 때만 시작 전에 알려줘요</div></div>
-        <label class="sw"><input type="checkbox" id="preSw" onchange="N&&N.setPreCheck(this.checked)"><span></span></label>
-      </div>
-    </div>
-    <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')"><span data-ic="sliders"></span> 기본 게임 모드 설정</button>
-    <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 <span data-ic="settings"></span> 를 누르세요</div>
-    <div id="statWrap" style="display:none">
-      <h3 style="margin:18px 2px 10px;font-size:19px">게임별 통계</h3>
-      <div id="statList"></div>
-    </div>
-    <div class="row" style="margin:18px 2px 10px"><h3 style="margin:0;font-size:19px">최근 게임 기록</h3><button class="sessBtn" id="sessEditBtn" style="display:none" onclick="toggleSessEdit()">편집</button></div>
-    <div class="sessBar" id="sessBar"></div>
-    <div id="sessList"></div>
-  </section>
-
-  <!-- 탭3 상태 -->
-  <section class="tab" id="t-status">
+    <h3 class="secT">휴대폰 상태</h3>
     <div class="stats" id="stats"></div>
-    <div class="card" style="margin-top:14px">
-      <div class="row">
-        <div><div style="font-weight:700"><span data-ic="palette" style="color:var(--violet)"></span> 그래픽 설정 추천</div><div class="sub">내 휴대폰 사양과 지난 게임 기록으로 게임 안 그래픽 설정을 골라줘요</div></div>
-      </div>
-      <button class="btn" style="margin-top:12px" onclick="openGfx()">추천 보기</button>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <div style="font-weight:700"><span data-ic="target" style="color:var(--cyan)"></span> 터치·반응 도구</div>
-      <div class="sub">터치가 안 먹는 곳이 있는지, 내 반응속도가 얼마인지 확인해요</div>
-      <div style="display:flex;gap:10px;margin-top:12px">
-        <button class="btn" style="flex:1" onclick="openTouchTest()"><span data-ic="pointer"></span> 터치 테스트</button>
-        <button class="btn" style="flex:1" onclick="openReflex()"><span data-ic="zap" style="color:var(--yellow)"></span> 반응속도</button>
-      </div>
-      <div class="sub" style="font-size:14px;margin-top:8px;text-align:center" id="reflexBest"></div>
-    </div>
-    <div class="card" style="margin-top:14px" id="ncCard">
-      <h3 style="margin-bottom:4px">와이파이 vs 4G/5G</h3>
-      <div class="sub">두 연결을 동시에 10번씩 재서 지금 게임하기 더 좋은 쪽을 알려줘요</div>
+    <h3 class="secT">인터넷</h3>
+    <div class="card" style="margin-top:0" id="ncCard">
+      <div style="font-weight:700">와이파이 vs 4G/5G</div>
+      <div class="sub">지금 게임하기 더 좋은 연결을 알려줘요</div>
       <div id="ncResult"></div>
       <button class="btn pri" style="margin-top:12px" id="ncBtn" onclick="doCompare()">비교 측정</button>
     </div>
     <div class="card" style="margin-top:14px">
       <div class="row">
-        <div><div style="font-weight:700">네트워크 지연(핑)</div><div class="sub" id="pingSub">측정 전</div></div>
+        <div><div style="font-weight:700">인터넷 지연(핑)</div><div class="sub" id="pingSub">측정 전</div></div>
         <div style="font-size:30px;font-weight:800" id="pingVal">–</div>
       </div>
       <button class="btn" style="margin-top:12px" id="pingBtn" onclick="doPing()">핑 측정</button>
     </div>
-    <div class="card">
+    <h3 class="secT">테스트</h3>
+    <div class="card" style="margin-top:0">
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1" onclick="openTouchTest()"><span data-ic="pointer"></span> 터치 테스트</button>
+        <button class="btn" style="flex:1" onclick="openReflex()"><span data-ic="zap" style="color:var(--yellow)"></span> 반응속도</button>
+      </div>
+      <div class="sub" style="font-size:14px;margin-top:8px;text-align:center" id="reflexBest"></div>
+    </div>
+  </section>
+
+  <!-- 탭4 설정 -->
+  <section class="tab" id="t-settings">
+    <h3 class="secT" style="margin-top:0">게임 실행</h3>
+    <div class="card" style="margin-top:0">
+      <div class="row">
+        <div><div style="font-weight:700">게임 실행 전 점검</div><div class="sub">문제가 있을 때만 시작 전에 알려줘요</div></div>
+        <label class="sw"><input type="checkbox" id="preSw" onchange="N&&N.setPreCheck(this.checked)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">홈 화면에서 켠 게임도 감지</div><div class="sub">목록의 게임을 어디서 켜든 자동으로 시작해요</div></div>
+        <label class="sw"><input type="checkbox" id="autoSw" onchange="toggleAuto(this)"><span></span></label>
+      </div>
+      <div class="advice" id="usageHint" style="display:none;margin-top:8px"></div>
+      <button class="btn" style="margin-top:10px" onclick="openMode('_default','기본 게임 모드')"><span data-ic="sliders"></span> 기본 게임 모드</button>
+    </div>
+    <h3 class="secT">기록 · HUD</h3>
+    <div class="card" style="margin-top:0">
+      <div class="row">
+        <div><div style="font-weight:700">게임 기록하기</div><div class="sub">온도·배터리를 기록해 리포트로 보여줘요</div></div>
+        <label class="sw"><input type="checkbox" id="recSw" onchange="toggleRec(this)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">게임 위에 HUD 띄우기</div><div class="sub">게임 중 메모리·핑·온도를 작은 창으로 봐요</div></div>
+        <label class="sw"><input type="checkbox" id="hudSw" onchange="toggleHud(this)"><span></span></label>
+      </div>
+      <button class="btn" style="margin-top:10px;padding:11px 14px;font-size:16px" onclick="openHudSet()"><span data-ic="sliders"></span> HUD 모양 설정 <span class="sub" id="hudSetSub" style="font-size:14px"></span></button>
+    </div>
+    <h3 class="secT">알림 · 방해금지</h3>
+    <div class="card" style="margin-top:0">
+      <div class="row">
+        <div><div style="font-weight:700">게임 중 경고 알림</div><div class="sub">45℃ 이상, 배터리 15% 이하일 때 알려줘요</div></div>
+        <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">성능 제한 알림</div><div class="sub">발열로 성능이 낮아질 수 있을 때 알려줘요</div></div>
+        <label class="sw"><input type="checkbox" id="thermalSw" onchange="N&&N.setThermalAlert(this.checked)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">방해금지 모드</div><div class="sub" id="dndSub">게임 중 알림·전화 차단</div></div>
+        <label class="sw"><input type="checkbox" id="dndSw" onchange="toggleDnd(this)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">부스트할 때 방해금지 자동 켜기</div><div class="sub">부스트·게임 실행 시 켜져요</div></div>
+        <label class="sw"><input type="checkbox" id="autoDndSw" onchange="toggleAutoDnd(this)"><span></span></label>
+      </div>
+    </div>
+    <h3 class="secT">앱 정보</h3>
+    <div class="card" style="margin-top:0">
       <div class="row">
         <div><div style="font-weight:700"><span data-ic="lock" style="color:var(--cyan)"></span> 권한 관리</div><div class="sub" id="permSub">기능별로 필요한 권한을 확인해요</div></div>
         <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" onclick="openOnb()">열기</button>
       </div>
-    </div>
-    <div class="card">
       <div class="row">
         <div><div style="font-weight:700">앱 버전</div><div class="sub" id="verSub">확인 중…</div></div>
         <button class="go btn" style="width:auto;padding:10px 14px;font-size:16px" id="verBtn" onclick="manualCheck()">업데이트 확인</button>
@@ -375,9 +377,10 @@ nav button .i .ico{width:22px;height:22px}
 </main>
 
 <nav>
-  <button class="on" data-t="boost" onclick="go('boost')"><span class="i" data-ic="zap"></span>부스트</button>
-  <button data-t="games" onclick="go('games')"><span class="i" data-ic="gamepad"></span>내 게임</button>
-  <button data-t="status" onclick="go('status')"><span class="i" data-ic="chart"></span>상태</button>
+  <button class="on" data-t="games" onclick="go('games')"><span class="i" data-ic="gamepad"></span>게임</button>
+  <button data-t="records" onclick="go('records')"><span class="i" data-ic="chart"></span>기록</button>
+  <button data-t="tools" onclick="go('tools')"><span class="i" data-ic="zap"></span>도구</button>
+  <button data-t="settings" onclick="go('settings')"><span class="i" data-ic="settings"></span>설정</button>
 </nav>
 
 <div class="modal" id="picker" onclick="if(event.target===this)closePicker()">
@@ -537,7 +540,7 @@ function hydrateIcons(root){(root||document).querySelectorAll('[data-ic]').forEa
 hydrateIcons();
 const N = window.Native || null;
 const $ = id => document.getElementById(id);
-let cur = 'boost', statTimer = null, allApps = [], editing = false, lastPing = null;
+let cur = 'games', statTimer = null, allApps = [], editing = false, lastPing = null;
 
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms||2500)}
 function gb(b){return (b/1073741824).toFixed(1)}
@@ -545,14 +548,15 @@ function mb(b){return Math.round(b/1048576)}
 function status(){ if(!N) return null; try{return JSON.parse(N.getStatus())}catch(e){return null} }
 
 function go(t){
-  if(sessEdit&&t!=='games') toggleSessEdit(false);
+  if(sessEdit&&t!=='records') toggleSessEdit(false);
   cur=t;
   document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   clearInterval(statTimer);
-  if(t==='status'){renderStatus();renderReflexBest();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
-  if(t==='boost'){renderBoost()}
-  if(t==='games'){loadGames();loadSessions()}
+  if(t==='tools'){renderBoost();renderStatus();renderReflexBest();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
+  if(t==='games'){loadGames()}
+  if(t==='records'){loadSessions()}
+  if(t==='settings'){loadSessions();renderBoost();renderStatus();renderPermSub()}
   window.scrollTo(0,0);
 }
 
@@ -588,7 +592,7 @@ function renderChecks(s){
   if(!s.dndGranted) items.push({ic:'belloff',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
   $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic" style="color:${{ok:'var(--green)',warn:'var(--orange)',bad:'var(--red)'}[i.st[0]]}">${ic(i.ic)}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
 }
-function openSet(w){ if(!N) return; if(w==='compare'){go('status');setTimeout(()=>{$('ncCard').scrollIntoView({behavior:'smooth'});doCompare()},200);return} if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
+function openSet(w){ if(!N) return; if(w==='compare'){go('tools');setTimeout(()=>{$('ncCard').scrollIntoView({behavior:'smooth'});doCompare()},200);return} if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
 
 function doBoost(){
   if(!N){toast('휴대폰 앱에서만 동작해요');return}
@@ -663,7 +667,7 @@ function pfRender(){
 function pfFix(w){ if(w==='compare') $('checkSheet').classList.remove('on'); openSet(w) }
 function pfCancel(){ pf=null; $('checkSheet').classList.remove('on') }
 function pfStart(){ const p=pf; pf=null; $('checkSheet').classList.remove('on'); if(p) launchGame(p.pkg,p.label) }
-function pfNever(){ if(N.setPreCheck) N.setPreCheck(false); if($('preSw')) $('preSw').checked=false; toast('내 게임 탭에서 다시 켤 수 있어요',3000); pfStart() }
+function pfNever(){ if(N.setPreCheck) N.setPreCheck(false); if($('preSw')) $('preSw').checked=false; toast('설정 탭에서 다시 켤 수 있어요',3000); pfStart() }
 function pfDecide(){
   if(!pf||!pf.wait) return;
   pf.wait=false; clearTimeout(pf.timer); $('overlay').classList.remove('on');
@@ -875,7 +879,7 @@ function renderOnb(){
     <div class="pt"><b>${x.n}</b><span class="tag" style="background:${x.req?'rgba(34,211,238,.15)':'var(--card2)'};color:${x.req?'var(--cyan)':'var(--sub)'}">${x.req?'권장':'선택'}</span>
     <div class="sub" style="font-size:15px">${x.w}</div></div>
     ${p[x.k]?'<span class="ok">'+ic('check')+' 허용됨</span>':`<button onclick="N.requestPermission('${x.k}')">허용하기</button>`}</div>`).join('')+
-    `<div class="sub" style="font-size:14px;text-align:center;margin:6px 4px 12px">권한은 언제든 상태 탭 → 권한 관리에서 다시 볼 수 있어요.<br>HUD·자동 감지는 내 게임 탭에서 켜고 끌 수 있어요.</div>`;
+    `<div class="sub" style="font-size:14px;text-align:center;margin:6px 4px 12px">권한과 HUD·자동 감지는 언제든 설정 탭에서 바꿀 수 있어요.</div>`;
 }
 function openOnb(){ renderOnb(); $('onb').classList.add('on') }
 function closeOnb(){ $('onb').classList.remove('on'); if(N&&N.setOnboarded) N.setOnboarded(); renderPermSub(); renderBoost() }
@@ -989,10 +993,15 @@ function renderMode(){
     <div class="row" style="margin:12px 0 4px"><div><div style="font-weight:700">이 게임 전용 설정</div><div class="sub">끄면 기본 게임 모드를 따라가요</div></div>
       <label class="sw"><input type="checkbox" ${d.own?'checked':''} onchange="modeData.own=this.checked;renderMode()"><span></span></label></div>`)+`
     <div class="${own?'':'dis'}">
-      <div class="optgrid">${opt('dnd','belloff','방해금지')}${opt('keepScreen','bulb','화면 켜짐 유지')}${opt('adBlock','shield','광고 차단 (이 게임만)','wide')}</div>
+      <div class="mlabel">알림</div>
+      <div class="optgrid">${opt('dnd','belloff','방해금지','wide')}</div>
+      <div class="sub" style="font-size:14px;margin:-2px 2px 2px">${ic('alarm')} 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
+      <div class="mlabel">화면 · 소리</div>
+      <div class="optgrid">${opt('keepScreen','bulb','화면 켜짐 유지','wide')}</div>
+      <div class="sub" style="font-size:14px;margin:-2px 2px 2px">${ic('volume')} 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
+      <div class="mlabel">광고</div>
+      <div class="optgrid">${opt('adBlock','shield','광고 차단 (이 게임만)','wide')}</div>
       ${d.adBlock?`<div class="sub" style="font-size:14px;margin:-2px 2px 10px;line-height:1.55">${ic('info')} 이 게임의 광고 서버 연결만 막아요. 카톡·문자·전화 등 다른 앱은 영향 없어요.<br>'광고 보고 보상 받기'는 동작하지 않을 수 있어요.</div>`:''}
-      <div class="mlabel">${ic('volume')} 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
-      <div class="mlabel">${ic('alarm')} 휴식 알림</div>${seg('breakMin',[[0,'끄기'],[30,'30분'],[60,'60분'],[90,'90분']])}
       ${warn}
     </div>
     ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}
@@ -1030,7 +1039,7 @@ function toggleHud(el){
   if(!N||!N.setHud) return;
   const r=N.setHud(el.checked);
   if(r==='permission'){ el.checked=false; hudWait=true; toast('게임부스터를 찾아 "다른 앱 위에 표시"를 허용한 뒤 돌아오세요',5000); return }
-  if(el.checked){ $('recSw').checked=true; toast('이제 내 게임에서 실행하면 HUD가 떠요') }
+  if(el.checked){ $('recSw').checked=true; toast('이제 게임 탭에서 실행하면 HUD가 떠요') }
 }
 
 /* ---------- 게임 기록 ---------- */
@@ -1222,7 +1231,7 @@ function renderSessions(){
   if(!sessions.length){ sessEdit=false; sessAsk=false }
   $('sessEditBtn').style.display=sessions.length?'':'none';
   renderSessionBar();
-  if(!sessions.length){$('sessList').innerHTML='<div class="empty" style="padding:20px 10px">아직 기록이 없어요.<br>위의 게임을 눌러 실행하면 자동으로 기록돼요.</div>';return}
+  if(!sessions.length){$('sessList').innerHTML='<div class="empty" style="padding:20px 10px">아직 기록이 없어요.<br>게임 탭에서 게임을 실행하면 자동으로 기록돼요.</div>';return}
   $('sessList').innerHTML=sessions.map(s=>`<div class="sess${sessSel.has(s.id)?' sel':''}" onclick="tapSess(${s.id})">
     ${sessEdit?`<div class="sessChk">${sessSel.has(s.id)?ic('check'):''}</div>`:''}<div class="l"><div class="nm">${esc(s.label)}</div>
       <div class="sub" style="font-size:14px">${fmtDate(s.start)} · ${fmtDur(s.duration)}</div>
@@ -1344,7 +1353,7 @@ function closeReport(){$('repSheet').classList.remove('on')}
 function onSessionReport(json){
   loadSessions();
   const s=JSON.parse(json);
-  go('games'); setTimeout(()=>openReport(s.id),150);
+  go('records'); setTimeout(()=>openReport(s.id),150);
 }
 function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록하지 않았어요',3000) }
 
@@ -1353,11 +1362,11 @@ window.onAppResume=()=>{
   if($('onb').classList.contains('on')) renderOnb();
   if($('checkSheet').classList.contains('on')&&pf) pfRender();
   onUpdateReturn(); renderPermSub(); renderUsageHint();
-  if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
-  if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
+  if(cur==='tools'||cur==='settings'){renderBoost();renderStatus()}
+  if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('records'); setTimeout(()=>openReport(id),150) } }
   if($('modeSheet').classList.contains('on')&&N.getGameMode){ const i=JSON.parse(N.getGameMode(modePkg)); modeInfo.dndGranted=i.dndGranted; modeInfo.overlay=i.overlay; modeInfo.vpn=i.vpn; renderMode() }
   if(autoWait){ autoWait=false; const p=perms(); if(p&&p.usage&&N.setAutoDetect(true)==='ok'){ $('autoSw').checked=true; toast('자동 감지 켜짐 — 등록한 게임을 어디서 켜든 자동으로 시작돼요',4000) } }
-  if(hudWait){ hudWait=false; const p=perms(); if(p&&p.overlay&&N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 내 게임에서 실행하면 떠요') } }
+  if(hudWait){ hudWait=false; const p=perms(); if(p&&p.overlay&&N.setHud(true)==='ok'){ $('hudSw').checked=true; $('recSw').checked=true; toast('HUD 켜짐 — 게임 탭에서 실행하면 떠요') } }
   if(upWaitPerm){ upWaitPerm=false; const p=perms(); if(p&&p.install&&$('upSheet').classList.contains('on')) setTimeout(startUpdate,300) }
   else if(Date.now()-lastCheck>30*60*1000) checkUpdate(false);
 };
@@ -1374,13 +1383,13 @@ window.onBack=()=>{
   if($('picker').classList.contains('on')){closePicker();return true}
   if(editing){toggleEdit();return true}
   if(sessEdit){toggleSessEdit(false);return true}
-  if(cur!=='boost'){go('boost');return true}
+  if(cur!=='games'){go('games');return true}
   return false;
 };
-renderBoost();
+go('games');
 (function(){ const v=ver(); if(v){ $('verSub').textContent='현재 '+v.name; if(v.openUpdate) pendingOpen=true } setTimeout(()=>checkUpdate(false),800) })();
 (function(){ const pp=N&&N.takePendingPlay?N.takePendingPlay():''; if(pp){ playFromShortcut(pp); return } const p=perms(); if(p&&!p.onboarded) openOnb(); renderPermSub() })();
-(function(){ if(!N||!N.takePendingReport) return; loadSessions(); const id=N.takePendingReport(); if(id&&id!=='0'){ go('games'); setTimeout(()=>openReport(id),150) } })();
+(function(){ if(!N||!N.takePendingReport) return; loadSessions(); const id=N.takePendingReport(); if(id&&id!=='0'){ go('records'); setTimeout(()=>openReport(id),150) } })();
 </script>
 </body>
 </html>
