@@ -307,6 +307,14 @@ nav button .i .ico{width:22px;height:22px}
         <div><div style="font-weight:700">게임 중 경고 알림</div><div class="sub">45℃ 이상으로 뜨거워지거나 배터리가 15% 아래로 내려가면 바로 알려줘요</div></div>
         <label class="sw"><input type="checkbox" id="alertSw" onchange="N&&N.setAlerts(this.checked)"><span></span></label>
       </div>
+      <div class="row">
+        <div><div style="font-weight:700">성능 제한 알림</div><div class="sub">발열로 성능이 낮아질 수 있을 때 게임 중에 알려줘요. 꺼도 리포트에는 기록돼요</div></div>
+        <label class="sw"><input type="checkbox" id="thermalSw" onchange="N&&N.setThermalAlert(this.checked)"><span></span></label>
+      </div>
+      <div class="row">
+        <div><div style="font-weight:700">게임 실행 전 점검</div><div class="sub">절전 모드·온도·인터넷 등에 문제가 있을 때만 시작 전에 알려줘요</div></div>
+        <label class="sw"><input type="checkbox" id="preSw" onchange="N&&N.setPreCheck(this.checked)"><span></span></label>
+      </div>
     </div>
     <button class="btn" style="margin-top:12px" onclick="openMode('_default','기본 게임 모드')"><span data-ic="sliders"></span> 기본 게임 모드 설정</button>
     <div class="sub" style="text-align:center;margin-top:6px;font-size:14px">게임마다 다르게 하려면 게임 아이콘의 <span data-ic="settings"></span> 를 누르세요</div>
@@ -454,6 +462,17 @@ nav button .i .ico{width:22px;height:22px}
     <div class="hd"><b style="font-size:20px" id="modeTitle">게임 모드</b><div class="sub">게임을 시작하면 켜지고, 끝나면 원래대로 돌아와요</div></div>
     <div class="bd" id="modeBody"></div>
     <div class="ft"><button class="btn pri" onclick="saveMode()">저장</button></div>
+  </div>
+</div>
+
+<div class="modal" id="checkSheet" onclick="if(event.target===this)pfCancel()">
+  <div class="sheet">
+    <div class="hd"><b style="font-size:20px">게임 시작 전 확인</b><div class="sub" id="checkSub"></div></div>
+    <div class="bd" id="checkBody"></div>
+    <div class="ft" style="display:flex;gap:10px">
+      <button class="btn" style="flex:1" onclick="pfCancel()">취소</button>
+      <button class="btn pri" style="flex:2" onclick="pfStart()">그대로 시작</button>
+    </div>
   </div>
 </div>
 
@@ -622,8 +641,42 @@ function isOwn(p){ try{ return N&&N.getGameMode&&JSON.parse(N.getGameMode(p)).mo
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toggleEdit(){editing=!editing;$('gameGrid').classList.toggle('editing',editing);$('editBtn').textContent=editing?'완료':'편집'}
 function removeGame(p){N.setGame(p,false);loadGames()}
+/* ---------- 게임 실행 전 점검 (문제가 있을 때만 표시) ---------- */
+let pf=null;
+function pfItems(){
+  const s=status()||{}, a=[];
+  if(s.powerSave) a.push({i:'battery',t:'절전 모드가 켜져 있어 성능이 제한될 수 있어요',go:'battery',b:'끄러 가기'});
+  if(s.temp>=38) a.push({i:'thermo',t:`지금 ${s.temp.toFixed(1)}℃예요. 잠시 식힌 뒤 시작하면 더 오래 쾌적해요`});
+  if(s.charging) a.push({i:'plug',t:'충전하며 하면 더 뜨거워질 수 있어요'});
+  if(s.net==='연결 없음') a.push({i:'wifi',t:'인터넷에 연결되어 있지 않아요',go:'wifi',b:'설정'});
+  else if(pf&&pf.slow) a.push({i:'wifi',t:`지금 인터넷 지연이 ${pf.slow}ms예요`,go:'compare',b:'비교'});
+  if(s.diskTotal&&s.diskFree/s.diskTotal<0.08) a.push({i:'drive',t:'저장공간이 부족해요',go:'storage',b:'설정'});
+  return a;
+}
+function pfRender(){
+  const a=pfItems();
+  $('checkSub').textContent=a.length?`${pf.label} 시작 전에 확인해 보세요`:'확인할 문제가 없어요';
+  $('checkBody').innerHTML=a.map(x=>`<div class="tip"><div class="ic" style="color:var(--orange)">${ic(x.i)}</div><div class="t">${x.t}</div>${x.go?`<button class="go" onclick="pfFix('${x.go}')">${x.b}</button>`:''}</div>`).join('')
+    +`<button class="btn" style="margin:10px 0 14px;font-size:15px;padding:10px" onclick="pfNever()">다음부터 점검하지 않기</button>`;
+  return a.length;
+}
+function pfFix(w){ if(w==='compare') $('checkSheet').classList.remove('on'); openSet(w) }
+function pfCancel(){ pf=null; $('checkSheet').classList.remove('on') }
+function pfStart(){ const p=pf; pf=null; $('checkSheet').classList.remove('on'); if(p) launchGame(p.pkg,p.label) }
+function pfNever(){ if(N.setPreCheck) N.setPreCheck(false); if($('preSw')) $('preSw').checked=false; toast('내 게임 탭에서 다시 켤 수 있어요',3000); pfStart() }
+function pfDecide(){
+  if(!pf||!pf.wait) return;
+  pf.wait=false; clearTimeout(pf.timer); $('overlay').classList.remove('on');
+  if(pfRender()) $('checkSheet').classList.add('on'); else pfStart();
+}
 function playGame(pkg,label){
   if(editing) return;
+  if(!(N&&N.getPreCheck&&N.getPreCheck())) return launchGame(pkg,label);
+  pf={pkg,label,wait:true,slow:0};
+  $('ovMsg').textContent='점검 중…'; $('ovSub').textContent=label; $('overlay').classList.add('on');
+  N.ping(); pf.timer=setTimeout(pfDecide,1500);   // 인터넷이 느려도 오래 기다리게 하지 않음
+}
+function launchGame(pkg,label){
   $('ovMsg').textContent='부스트 중…'; $('ovSub').textContent=label+' 준비'; $('overlay').classList.add('on');
   N.launchGame(pkg,true);
 }
@@ -676,7 +729,8 @@ function doPing(){
   $('pingBtn').textContent='측정 중…';$('pingBtn').disabled=true;N.ping();
 }
 function onPing(json){
-  const r=JSON.parse(json);$('pingBtn').textContent='다시 측정';$('pingBtn').disabled=false;
+  const r=JSON.parse(json);
+  if(pf&&pf.wait){ if(r.avg>150) pf.slow=r.avg; pfDecide() }$('pingBtn').textContent='다시 측정';$('pingBtn').disabled=false;
   if(r.best<0){$('pingVal').innerHTML=ic('x','var(--red)');$('pingSub').textContent='인터넷 연결을 확인하세요';return}
   const v=r.avg; const c=v<=50?'var(--green)':v<=100?'var(--orange)':'var(--red)';
   $('pingVal').innerHTML=`<span style="color:${c}">${v}<small style="font-size:16px">ms</small></span>`;
@@ -828,7 +882,7 @@ function closeOnb(){ $('onb').classList.remove('on'); if(N&&N.setOnboarded) N.se
 function renderPermSub(){ const p=perms(); if(!p||!$('permSub')) return; const ok=PERMS.filter(x=>p[x.k]).length; $('permSub').textContent=`${ok}/${PERMS.length} 허용됨`+(ok<PERMS.length?' — 눌러서 확인':'') }
 
 /* ---------- 그래픽 설정 추천 ---------- */
-function gfxRecommend(sp, sess){
+function gfxRecommend(sp, sess, forGame){
   const ram=sp.ramGb||0, cores=sp.cores||0, ghz=sp.maxGhz||0, hz=sp.maxHz||60;
   let tier = (ram>=7.5&&cores>=8&&ghz>=2.8)?4 : (ram>=7.5&&ghz>=2.3)?3 : ram>=5.5?2 : ram>=3.5?1 : 0;
   const why=[];
@@ -838,6 +892,16 @@ function gfxRecommend(sp, sess){
   const throttled=recent.filter(x=>x.thermalMax>=3||x.hotMin>=3).length;
   let heatNote='';
   if(recent.length>=2 && throttled>=2 && tier>0){ tier--; heatNote=`최근 ${recent.length}판 중 ${throttled}판에서 발열로 성능이 제한돼서 한 단계 낮췄어요`; }
+  // 이 게임 기록에 맞춘 조언
+  let gameNote='';
+  if(forGame&&(sess||[]).length>=2){
+    const st=gameStats(sess);
+    if(st.onsets.length){ const m=Math.round(avg(st.onsets));
+      gameNote=`이 게임은 보통 ${m}분쯤 42℃를 넘어요. 그림자를 끄고 프레임을 60fps로 해 보세요.`;
+      if(!heatNote&&tier>0) tier--;
+    } else if(sess.length>=3&&!st.throttled&&Math.max(...sess.map(x=>x.tMax))<38&&tier<4)
+      gameNote='이 게임은 최고 온도가 38℃ 아래로 안정적이에요. 그래픽을 한 단계 올려도 괜찮아 보여요.';
+  }
   const names=['최저','낮음','보통','높음(HD)','최상'];
   const fpsCap=[30,30,60,90,120][tier];
   const fps=Math.min(hz, heatNote? Math.min(fpsCap,60) : fpsCap);
@@ -858,17 +922,19 @@ function gfxRecommend(sp, sess){
     r: tier>=4?'계단 현상을 줄여줘요. 여유가 있어서 켜도 괜찮아요.':'휴대폰 화면은 촘촘해서 꺼도 차이가 작고 성능 이득은 커요.'});
   rows.push({i:'burst',t:'효과·파티클',v:tier>=3?'중간':'낮음',c:tier>=3?'var(--cyan)':'var(--orange)',
     r:'한타·폭발 장면에서 프레임이 떨어진다면 이것부터 낮추세요.'});
-  return {tier,names,rows,why,heatNote};
+  return {tier,names,rows,why,heatNote,gameNote};
 }
-function openGfx(){
+function openGfx(pkg){
   if(!N||!N.getSpecs){toast('휴대폰 앱에서만 동작해요');return}
   const sp=JSON.parse(N.getSpecs()); let sess=[]; try{sess=JSON.parse(N.getSessions())}catch(e){}
-  const g=gfxRecommend(sp,sess);
+  if(typeof pkg==='string'&&pkg) sess=sess.filter(x=>x.pkg===pkg); else pkg='';
+  const g=gfxRecommend(sp,sess,!!pkg);
   const bars=[0,1,2,3,4].map(k=>`<i style="height:${30+k*17}%;background:${k<=g.tier?'var(--green)':'var(--card2)'}"></i>`).join('');
   $('gfxBody').innerHTML=`
     <div class="tier"><div class="bars4">${bars}</div>
       <div><div class="sub" style="font-size:14px">추천 등급</div><div style="font-size:26px;font-weight:800;color:var(--green)">${g.names[g.tier]}</div>
       <div class="sub" style="font-size:14px">${g.why[0]} · ${sp.maxHz}Hz · ${sp.resW}×${sp.resH}</div></div></div>
+    ${g.gameNote?`<div class="coach" style="margin-bottom:10px"><b>이 게임 기록 기준</b><br>${esc(g.gameNote)}</div>`:''}
     <div class="sub" style="font-size:14px;margin-bottom:6px">${ic('info')} 게임 안 설정 메뉴에서 직접 바꾸는 추천값이에요. 게임부스터가 게임 설정을 바꾸거나 게임 자체를 빠르게 할 수는 없어요.</div>
     ${g.rows.map(r=>`<div class="gset"><div class="gi" style="color:var(--cyan)">${ic(r.i)}</div><div class="gt"><div class="row"><b>${r.t}</b><span class="gv" style="color:${r.c}">${r.v}</span></div><div class="sub" style="font-size:15px">${r.r}</div></div></div>`).join('')}
     <div class="sub" style="font-size:14px;margin:8px 0 12px">${esc(sp.model)} · ${esc(sp.soc||'')}</div>`;
@@ -982,6 +1048,8 @@ function loadSessions(){
   loadHudSet();
   if(N&&N.getAutoDetect) $('autoSw').checked=N.getAutoDetect();
   if(N&&N.getAlerts) $('alertSw').checked=N.getAlerts();
+  if(N&&N.getThermalAlert) $('thermalSw').checked=N.getThermalAlert();
+  if(N&&N.getPreCheck) $('preSw').checked=N.getPreCheck();
   renderSessions();
 }
 function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}시간 ${m}분`:m?`${m}분`:`${s}초`}
@@ -1110,6 +1178,7 @@ function openStat(pkg){
       <div style="font-size:20px;font-weight:800;color:${scoreColor(st.score)}">${st.score>=80?'아주 안정적':st.score>=60?'안정적인 편':st.score>=40?'조금 불안정':'불안정'}</div>
       <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div><div class="sub" style="font-size:13px">기록은 전체 게임 합쳐 최근 30판까지 저장되고, 이 안에서 계산해요</div></div></div>
     <div class="coach"><b>코치 한마디</b><br>${coachLines(list,st).join('<br>')}</div>
+    <button class="btn" style="margin-top:10px" data-pkg="${esc(pkg)}" onclick="closeStat();openGfx(this.dataset.pkg)">${ic('sliders')} 이 게임 그래픽 추천 보기</button>
     <div class="mlabel" style="margin-top:12px">판마다 최고 온도 (최근 ${recent.length}판) <span class="sub" style="font-size:13px;font-weight:600;color:#F87171">- - 42℃ 과열선</span></div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-top:6px">
       <line x1="${pl}" x2="${W-pr}" y1="${y42.toFixed(1)}" y2="${y42.toFixed(1)}" stroke="#F87171" stroke-dasharray="4 4" opacity=".7"/>
@@ -1198,7 +1267,7 @@ function compareText(s){
 }
 function adviceText(s){
   const a=[];
-  if(s.thermalMax>=3) a.push(ic('flame','var(--orange)')+' 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" onclick="closeReport();openGfx()">그래픽 추천 보기</button>');
+  if(s.thermalMax>=3) a.push(ic('flame','var(--orange)')+' 발열 때문에 휴대폰이 스스로 성능을 낮췄을 가능성이 커요. 렉이 느껴졌다면 이 때문일 수 있어요. <button class="go" data-pkg="${esc(s.pkg)}" onclick="closeReport();openGfx(this.dataset.pkg)">그래픽 추천 보기</button>');
   if(s.charged&&s.tMax>=40) a.push(ic('plug','var(--yellow)')+' 충전하면서 게임하면 온도가 더 올라가요. 가능하면 충전기를 빼고 해보세요.');
   if(s.tMax>=42&&!s.charged) a.push(ic('snow','var(--cyan)')+' 케이스를 벗기거나 그래픽 설정을 한 단계 낮추면 온도가 내려가요.');
   if(drainOf(s)>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
@@ -1263,7 +1332,7 @@ function openReport(id){
       <div class="rbox"><div class="k">시간당 소모</div><div class="v">${drainOf(s)>=0?s.perHour+'<small>%/h</small>':'<small>'+drainNote(s)+'</small>'}</div></div>
       <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
-      <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
+      <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thFrom>=0?`성능 제한 ${Math.floor(s.thFrom/60)}~${Math.ceil(s.thTo/60)}분`:s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
       <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>
       ${s.adsBlocked>=0?`<div class="rbox" style="grid-column:span 2"><div class="k">광고 연결 차단</div><div class="v" style="color:var(--green)">${s.adsBlocked}<small>회</small></div><div class="sub" style="font-size:14px">${adBlockSub(s)}</div></div>`:''}
     </div>
@@ -1282,6 +1351,7 @@ function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록�
 window.onAppResume=()=>{
   $('overlay').classList.remove('on');   // 게임에서 돌아왔을 때 실행 안내가 남지 않게
   if($('onb').classList.contains('on')) renderOnb();
+  if($('checkSheet').classList.contains('on')&&pf) pfRender();
   onUpdateReturn(); renderPermSub(); renderUsageHint();
   if(cur==='boost')renderBoost(); if(cur==='status')renderStatus();
   if(N&&N.takePendingReport){ const id=N.takePendingReport(); if(id&&id!=='0'){ loadSessions(); go('games'); setTimeout(()=>openReport(id),150) } }
@@ -1294,6 +1364,7 @@ window.onAppResume=()=>{
 window.onBack=()=>{
   if($('touchTool').classList.contains('on')||$('reflexTool').classList.contains('on')){closeTool();return true}
   if($('statSheet').classList.contains('on')){closeStat();return true}
+  if($('checkSheet').classList.contains('on')){pfCancel();return true}
   if($('onb').classList.contains('on')){closeOnb();return true}
   if($('gfxSheet').classList.contains('on')){closeGfx();return true}
   if($('hudSheet').classList.contains('on')){closeHudSet();return true}

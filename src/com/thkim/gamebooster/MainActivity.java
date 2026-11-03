@@ -779,6 +779,18 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean getThermalAlert() { return prefs.getBoolean("thermalAlert", false); }
+
+        @JavascriptInterface
+        public void setThermalAlert(boolean on) { prefs.edit().putBoolean("thermalAlert", on).apply(); }
+
+        @JavascriptInterface
+        public boolean getPreCheck() { return prefs.getBoolean("preCheck", true); }
+
+        @JavascriptInterface
+        public void setPreCheck(boolean on) { prefs.edit().putBoolean("preCheck", on).apply(); }
+
+        @JavascriptInterface
         public boolean getAlerts() { return prefs.getBoolean("alerts", true); }
 
         @JavascriptInterface

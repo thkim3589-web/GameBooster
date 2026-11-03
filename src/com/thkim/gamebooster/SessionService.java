@@ -63,6 +63,7 @@ public class SessionService extends Service {
     private long leftAt;                  // 게임에서 다른 앱으로 간 시각 (0 = 게임 중)
     private String fgPkg;                 // 지금 화면 맨 앞 앱
     private long lastQuery;
+    private boolean thermalArmed = true;
     private boolean heatArmed = true, batArmed = true;   // 실시간 경고 (한 번 알리면 회복될 때까지 쉼)
     static final double HEAT_ALERT = 45.0, HEAT_REARM = 42.0;
     static final int BAT_ALERT = 15;
@@ -195,7 +196,7 @@ public class SessionService extends Service {
             fgPkg = null;
             lastQuery = System.currentTimeMillis() - 5_000;
         }
-        heatArmed = true; batArmed = true;
+        heatArmed = true; batArmed = true; thermalArmed = true;
         ticks = 0;
         try {
             JSONObject meta = new JSONObject(readAll(metaFile(this)));
@@ -276,6 +277,7 @@ public class SessionService extends Service {
 
     /** 게임 중 실시간 경고: 45℃ 이상, 배터리 15% 이하 (HUD가 꺼져 있어도 알림) */
     private void checkAlerts() {
+        checkThermalAlert();
         if (!prefs(this).getBoolean("alerts", true)) return;
         try {
             Intent bat = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -298,6 +300,20 @@ public class SessionService extends Service {
                 batArmed = false;
                 alert(92, "🔋 배터리 " + lvl + "% 남았어요", "게임이 갑자기 꺼지기 전에 충전기를 연결하세요.");
                 if (hud != null) hud.flash("배터리 " + lvl + "% — 충전하세요");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** 성능 제한 알림: 휴대폰이 발열로 성능을 낮출 단계가 되면 한 번 알림 (사용자가 켰을 때만) */
+    private void checkThermalAlert() {
+        if (Build.VERSION.SDK_INT < 29 || !prefs(this).getBoolean("thermalAlert", false)) return;
+        try {
+            int st = ((PowerManager) getSystemService(POWER_SERVICE)).getCurrentThermalStatus();
+            if (st < PowerManager.THERMAL_STATUS_MODERATE) thermalArmed = true;
+            if (st >= PowerManager.THERMAL_STATUS_SEVERE && thermalArmed) {
+                thermalArmed = false;
+                alert(93, "발열로 성능이 낮아질 수 있어요", "잠깐 쉬거나 게임 그래픽을 낮춰 보세요.");
+                if (hud != null) hud.flash("발열로 성능 저하 가능 — 잠깐 쉬어가세요");
             }
         } catch (Exception ignored) {}
     }
@@ -559,11 +575,12 @@ public class SessionService extends Service {
             long dur = (System.currentTimeMillis() - meta.getLong("start")) / 1000;
             if (dur < MIN_SEC || rows.size() < 2) { lastShort = true; return null; }
 
-            double tMax = -99, tSum = 0; int hot = 0, thMax = 0; long ramSum = 0; boolean charged = false; int chargeRows = 0;
+            double tMax = -99, tSum = 0; int hot = 0, thMax = 0; long ramSum = 0; boolean charged = false; int chargeRows = 0; long thFrom = -1, thTo = -1;
             for (double[] r : rows) {
                 tMax = Math.max(tMax, r[1]); tSum += r[1];
                 if (r[1] >= 42) hot++;
                 thMax = Math.max(thMax, (int) r[5]);
+                if (r[5] >= 3) { if (thFrom < 0) thFrom = (long) r[0]; thTo = (long) r[0]; }
                 ramSum += (long) r[4];
                 if (r[3] > 0) { charged = true; chargeRows++; }
             }
@@ -597,6 +614,8 @@ public class SessionService extends Service {
             rep.put("tAvg", Math.round(tSum / rows.size() * 10) / 10.0);
             rep.put("hotMin", Math.round(hot * INTERVAL_MS / 60000.0 * 10) / 10.0);
             rep.put("thermalMax", thMax);
+            rep.put("thFrom", thFrom);   // 성능 제한 구간(초), 없으면 -1
+            rep.put("thTo", thTo);
             rep.put("ramAvgMb", ramSum / rows.size());
 
             // 그래프용 (최대 120점)
