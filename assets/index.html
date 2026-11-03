@@ -278,15 +278,15 @@ nav button .i .ico{width:22px;height:22px}
             <circle id="ringArc" cx="60" cy="60" r="54" fill="none" stroke="#22D3EE" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
           </svg>
           <div class="center">
-            <button class="boostBtn" id="boostBtn" onclick="doBoost()">부스트<small id="boostSub">탭하여 최적화</small></button>
+            <button class="boostBtn" id="boostBtn" onclick="doBoost()">부스트<small id="boostSub">탭하여 정리</small></button>
           </div>
         </div>
         <div class="ramtxt" id="ramTxt">메모리 확인 중…</div>
         <div class="result" id="result"></div>
       </div>
     </div>
-    <div class="card">
-      <h3>지금 상태 점검</h3>
+    <div class="card" id="checksCard">
+      <h3>확인할 점</h3>
       <div id="checks"></div>
     </div>
     <h3 class="secT">휴대폰 상태</h3>
@@ -378,7 +378,7 @@ nav button .i .ico{width:22px;height:22px}
 
 <nav>
   <button class="on" data-t="games" onclick="go('games')"><span class="i" data-ic="gamepad"></span>게임</button>
-  <button data-t="records" onclick="go('records')"><span class="i" data-ic="chart"></span>기록</button>
+  <button data-t="records" onclick="go('records')"><span class="i" data-ic="chart"></span>분석</button>
   <button data-t="tools" onclick="go('tools')"><span class="i" data-ic="zap"></span>도구</button>
   <button data-t="settings" onclick="go('settings')"><span class="i" data-ic="settings"></span>설정</button>
 </nav>
@@ -575,7 +575,7 @@ function renderBoost(){
   $('ramTxt').innerHTML=`메모리 사용 <span style="color:var(--cyan)">${pct}%</span> · 여유 ${gb(s.ramAvail)}GB`;
   $('dndSw').checked=s.dndOn; $('autoDndSw').checked=s.autoDnd;
   $('dndSub').textContent = s.dndGranted ? (s.dndOn?'켜짐 — 알림·전화 차단 중':'게임 중 알림·전화 차단') : '처음 한 번 권한 허용이 필요해요';
-  if(s.lastBoost){const m=Math.round((Date.now()-s.lastBoost)/60000); $('boostSub').textContent = m<1?'방금 최적화함': m<60? m+'분 전 최적화' : '탭하여 최적화'}
+  if(s.lastBoost){const m=Math.round((Date.now()-s.lastBoost)/60000); $('boostSub').textContent = m<1?'방금 정리함': m<60? m+'분 전 정리' : '탭하여 정리'}
   renderChecks(s);
 }
 function renderChecks(s){
@@ -590,14 +590,15 @@ function renderChecks(s){
   const freePct=Math.round(s.diskFree/s.diskTotal*100);
   items.push({ic:'drive',t:'저장공간 여유 '+gb(s.diskFree)+'GB ('+freePct+'%)',st:freePct>=15?['ok','양호']:freePct>=8?['warn','부족']:['bad','정리 필요'],go:freePct<15?'storage':null});
   if(!s.dndGranted) items.push({ic:'belloff',t:'방해금지 권한 허용하기',st:['warn','필요'],go:'dnd'});
-  $('checks').innerHTML=items.map(i=>`<div class="tip"><div class="ic" style="color:${{ok:'var(--green)',warn:'var(--orange)',bad:'var(--red)'}[i.st[0]]}">${ic(i.ic)}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
+  const show=items.filter(i=>i.st[0]!=='ok'); $('checksCard').style.display=show.length?'':'none';   // 아래 휴대폰 상태와 겹치지 않게 문제만
+  $('checks').innerHTML=show.map(i=>`<div class="tip"><div class="ic" style="color:${{ok:'var(--green)',warn:'var(--orange)',bad:'var(--red)'}[i.st[0]]}">${ic(i.ic)}</div><div class="t">${i.t}<br><span class="badge ${i.st[0]}">${i.st[1]}</span></div>${i.go?`<button class="go" onclick="openSet('${i.go}')">${i.go==='compare'?'비교':'설정'}</button>`:''}</div>`).join('');
 }
 function openSet(w){ if(!N) return; if(w==='compare'){go('tools');setTimeout(()=>{$('ncCard').scrollIntoView({behavior:'smooth'});doCompare()},200);return} if(w==='dnd') N.openDndPermission(); else N.openSettings(w) }
 
 function doBoost(){
   if(!N){toast('휴대폰 앱에서만 동작해요');return}
   const b=$('boostBtn'); if(b.classList.contains('busy')) return;
-  b.classList.add('busy'); $('boostSub').textContent='최적화 중…'; $('result').textContent='';
+  b.classList.add('busy'); $('boostSub').textContent='정리 중…'; $('result').textContent='';
   setRing(0);
   N.boost();
 }
@@ -607,7 +608,7 @@ function onBoostDone(json){
   const f=mb(r.freed);
   $('result').innerHTML = (f>=20 ? `여유 메모리 <b>+${f}MB</b>` : `정리할 메모리가 거의 없어요 <b>${ic('check')}</b>`)
     + `<div class="sub">백그라운드 정리 완료 (앱 ${r.count}개 확인)${r.dnd?' · 방해금지 ON':''}</div>`+lastPlayLine();
-  $('boostSub').textContent='방금 최적화함';
+  $('boostSub').textContent='방금 정리함';
   setTimeout(renderBoost,200);
 }
 function lastPlayLine(){
@@ -720,7 +721,7 @@ function renderStatus(){
   const thermal=['정상','약간 따뜻','따뜻함','뜨거움','매우 뜨거움','위험','차단'][s.thermal]||null;
   $('stats').innerHTML=`
    <div class="stat"><div class="k">배터리${s.charging?' '+ic('zap','var(--yellow)'):''}</div><div class="v" style="color:${bCol}">${s.battery}<small>%</small></div><div class="bar"><i style="width:${s.battery}%;background:${bCol}"></i></div></div>
-   <div class="stat"><div class="k">온도</div><div class="v" style="color:${tCol}">${s.temp.toFixed(1)}<small>℃</small></div><div class="sub">${thermal?'기기 발열: '+thermal:''}</div></div>
+   <div class="stat"><div class="k">배터리 온도</div><div class="v" style="color:${tCol}">${s.temp.toFixed(1)}<small>℃</small></div><div class="sub">${thermal?'기기 발열: '+thermal:''}</div></div>
    <div class="stat wide"><div class="row"><div class="k">메모리 (RAM)</div><div class="sub">${gb(s.ramTotal-s.ramAvail)} / ${gb(s.ramTotal)}GB</div></div><div class="v">${ramPct}<small>% 사용</small></div><div class="bar"><i style="width:${ramPct}%;background:${ramPct>=85?'var(--red)':ramPct>=70?'var(--orange)':'var(--cyan)'}"></i></div></div>
    <div class="stat wide"><div class="row"><div class="k">저장공간</div><div class="sub">여유 ${gb(s.diskFree)}GB</div></div><div class="v">${diskPct}<small>% 사용</small></div><div class="bar"><i style="width:${diskPct}%;background:var(--violet)"></i></div></div>
    <div class="stat"><div class="k">네트워크</div><div class="v" style="font-size:22px">${s.net}</div></div>
@@ -1001,7 +1002,7 @@ function renderMode(){
       <div class="sub" style="font-size:14px;margin:-2px 2px 2px">${ic('volume')} 미디어 볼륨</div>${seg('mediaVol',[[-1,'그대로'],[30,'30%'],[50,'50%'],[70,'70%'],[100,'100%']])}
       <div class="mlabel">광고</div>
       <div class="optgrid">${opt('adBlock','shield','광고 차단 (이 게임만)','wide')}</div>
-      ${d.adBlock?`<div class="sub" style="font-size:14px;margin:-2px 2px 10px;line-height:1.55">${ic('info')} 이 게임의 광고 서버 연결만 막아요. 카톡·문자·전화 등 다른 앱은 영향 없어요.<br>'광고 보고 보상 받기'는 동작하지 않을 수 있어요.</div>`:''}
+      ${d.adBlock?`<div class="sub" style="font-size:14px;margin:-2px 2px 10px;line-height:1.55">${ic('info')} 이 게임의 주소 조회(DNS)만 휴대폰 안에서 걸러 광고 서버 연결을 막아요. 다른 앱은 거치지 않고, 조회 내역을 개발자 서버로 보내지 않아요.<br>다른 VPN과 함께 쓸 수 없고, 로그인이나 '광고 보고 보상 받기'가 안 될 수 있어요.</div>`:''}
       ${warn}
     </div>
     ${own?'':`<div class="sub" style="text-align:center;margin:8px 0 12px">지금은 기본 게임 모드를 따라요</div>`}
@@ -1160,12 +1161,20 @@ function coachLines(list,st){
     const m=Math.round(avg(st.onsets));
     out.push(`${ic('flame','var(--orange)')} 보통 <b>${m}분쯤</b> 42℃를 넘어요.`+(m>=10?` ${Math.max(5,m-5)}분쯤 잠깐 쉬거나 그래픽을 한 단계 낮추면 좋아요.`:' 시작부터 뜨거워지니 그래픽을 낮춰보세요.'));
   } else if(st.n>=2) out.push(ic('snow','var(--cyan)')+' 지금까지 이 게임에서 42℃를 넘은 적이 없어요.');
-  const b=list.filter(s=>s.boosted), nb=list.filter(s=>!s.boosted);
-  if(b.length&&nb.length){ const d=Math.round((avg(nb.map(s=>s.tMax))-avg(b.map(s=>s.tMax)))*10)/10;
+  // 비슷한 조건만 비교: 충전하지 않은 판, 양쪽 2판 이상
+  const plain=list.filter(s=>!s.charged), b=plain.filter(s=>s.boosted), nb=plain.filter(s=>!s.boosted);
+  if(b.length>=2&&nb.length>=2){ const d=Math.round((avg(nb.map(s=>s.tMax))-avg(b.map(s=>s.tMax)))*10)/10;
     out.push(Math.abs(d)>=0.5?`${ic('zap','var(--yellow)')} 부스트한 판이 최고 온도가 평균 <b>${Math.abs(d)}℃ ${d>0?'낮았어요':'높았어요'}</b>.`:ic('zap','var(--yellow)')+' 부스트 여부에 따른 온도 차이는 거의 없었어요.'); }
   const ch=list.filter(s=>s.charged), nch=list.filter(s=>!s.charged);
   if(ch.length&&nch.length){ const d=Math.round((avg(ch.map(s=>s.tMax))-avg(nch.map(s=>s.tMax)))*10)/10;
     if(d>=1) out.push(`${ic('plug','var(--yellow)')} 충전하면서 한 판이 평균 <b>${d}℃ 더 뜨거웠어요</b>.`); }
+  const dOk=plain.filter(s=>drainOf(s)>=0), adOn=dOk.filter(s=>s.adsBlocked>=0), adNo=dOk.filter(s=>!(s.adsBlocked>=0));
+  if(adOn.length>=2&&adNo.length>=2){ const d=Math.round(avg(adNo.map(s=>s.perHour))-avg(adOn.map(s=>s.perHour)));
+    if(Math.abs(d)>=2) out.push(`${ic('shield','var(--green)')} 광고 차단을 켠 판이 시간당 배터리를 평균 <b>${Math.abs(d)}% ${d>0?'덜':'더'} 썼어요</b>.`); }
+  const vs=list.filter(s=>s.ver), nowV=vs.length?vs[0].ver:'', old=vs.find(s=>s.ver!==nowV);
+  if(old){ const a=vs.filter(s=>s.ver===nowV), c=vs.filter(s=>s.ver===old.ver);
+    if(a.length>=2&&c.length>=2){ const d=Math.round((avg(a.map(s=>s.tMax))-avg(c.map(s=>s.tMax)))*10)/10;
+      out.push(Math.abs(d)>=0.5?`${ic('info','var(--cyan)')} 게임 업데이트(${esc(old.ver)} → ${esc(nowV)}) 후 최고 온도가 평균 <b>${Math.abs(d)}℃ ${d<0?'낮아졌어요':'높아졌어요'}</b>.`:`${ic('info','var(--cyan)')} 게임 업데이트 후 온도 변화는 거의 없어요.`); } }
   if(st.drain>0) out.push(`${ic('battery','var(--green)')} 시간당 배터리 ${Math.round(st.drain)}%를 써요. 가득 충전하면 약 <b>${(100/st.drain).toFixed(1)}시간</b> 할 수 있어요.`);
   if(st.throttled) out.push(`${ic('warn','var(--red)')} ${st.n}판 중 ${st.throttled}판에서 발열로 성능이 제한됐어요.`);
   if(st.n<3) out.push(`<span class="sub">기록이 ${st.n}판뿐이라 아직 정확하지 않아요. 3판 이상 하면 더 믿을 만해져요.</span>`);
@@ -1185,7 +1194,7 @@ function openStat(pkg){
   $('statBody').innerHTML=`
     <div class="tier" style="gap:16px">${ringSvg(st.score)}<div><div class="sub" style="font-size:14px">안정성 점수</div>
       <div style="font-size:20px;font-weight:800;color:${scoreColor(st.score)}">${st.score>=80?'아주 안정적':st.score>=60?'안정적인 편':st.score>=40?'조금 불안정':'불안정'}</div>
-      <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div><div class="sub" style="font-size:13px">기록은 전체 게임 합쳐 최근 30판까지 저장되고, 이 안에서 계산해요</div></div></div>
+      <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div><div class="sub" style="font-size:13px">기록은 게임당 최근 20판까지 저장되고, 이 안에서 계산해요</div></div></div>
     <div class="coach"><b>코치 한마디</b><br>${coachLines(list,st).join('<br>')}</div>
     <button class="btn" style="margin-top:10px" data-pkg="${esc(pkg)}" onclick="closeStat();openGfx(this.dataset.pkg)">${ic('sliders')} 이 게임 그래픽 추천 보기</button>
     <div class="mlabel" style="margin-top:12px">판마다 최고 온도 (최근 ${recent.length}판) <span class="sub" style="font-size:13px;font-weight:600;color:#F87171">- - 42℃ 과열선</span></div>
@@ -1332,14 +1341,14 @@ function adBlockSub(s){
 function openReport(id){
   const s=sessions.find(x=>x.id==id); if(!s) return;
   $('repTitle').textContent=s.label+' 리포트';
-  $('repSub').textContent=fmtDate(s.start)+' · '+fmtDur(s.duration)+(s.boosted?' · 부스트 후 실행':'');
+  $('repSub').textContent=fmtDate(s.start)+' · '+fmtDur(s.duration)+(s.boosted?' · 부스트 후 실행':'')+(s.ver?' · 게임 버전 '+s.ver:'');
   const th=['정상','약간 따뜻','따뜻함','뜨거움','매우 뜨거움','위험','차단'][s.thermalMax]||'정상';
   $('repBody').innerHTML=`
     <div style="margin-top:10px">${chartSvg(s)}</div>
     <div class="rgrid">
       <div class="rbox"><div class="k">배터리 사용</div><div class="v">${s.charged?'<small>'+chargeLabel(s)+'</small>':s.batUsed+'<small>%</small>'}</div><div class="sub" style="font-size:14px">${s.batStart}% → ${s.batEnd}%</div></div>
       <div class="rbox"><div class="k">시간당 소모</div><div class="v">${drainOf(s)>=0?s.perHour+'<small>%/h</small>':'<small>'+drainNote(s)+'</small>'}</div></div>
-      <div class="rbox"><div class="k">최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
+      <div class="rbox"><div class="k">배터리 최고 온도</div><div class="v" style="color:${tColor(s.tMax)}">${s.tMax.toFixed(1)}<small>℃</small></div><div class="sub" style="font-size:14px">시작 ${s.tStart.toFixed(1)}℃ · 평균 ${s.tAvg}℃</div></div>
       <div class="rbox"><div class="k">과열(42℃↑) 시간</div><div class="v" style="color:${s.hotMin>0?'var(--red)':'var(--green)'}">${s.hotMin}<small>분</small></div></div>
       <div class="rbox"><div class="k">기기 발열 단계</div><div class="v" style="font-size:20px;color:${s.thermalMax>=3?'var(--red)':s.thermalMax>=2?'var(--orange)':'var(--green)'}">${th}</div><div class="sub" style="font-size:14px">${s.thFrom>=0?`성능 제한 ${Math.floor(s.thFrom/60)}~${Math.ceil(s.thTo/60)}분`:s.thermalMax>=3?'성능 제한 구간':'성능 제한 없음'}</div></div>
       <div class="rbox"><div class="k">평균 여유 메모리</div><div class="v">${(s.ramAvgMb/1024).toFixed(1)}<small>GB</small></div><div class="sub" style="font-size:14px">${s.boosted&&s.freedMb>=20?'부스트로 '+s.freedMb+'MB 확보':s.boosted?'부스트함':'부스트 안 함'}</div></div>

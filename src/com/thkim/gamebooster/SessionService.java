@@ -119,6 +119,7 @@ public class SessionService extends Service {
             m.put("breakMin", mode.optInt("breakMin", 0));
             m.put("pkg", pkg);
             m.put("label", label);
+            try { m.put("ver", c.getPackageManager().getPackageInfo(pkg, 0).versionName); } catch (Exception ignored) {}
             m.put("start", System.currentTimeMillis());
             m.put("boosted", boosted);
             m.put("ramBefore", ramBefore);
@@ -591,6 +592,7 @@ public class SessionService extends Service {
             rep.put("id", meta.getLong("start"));
             rep.put("pkg", meta.optString("pkg"));
             rep.put("label", meta.optString("label"));
+            rep.put("ver", meta.optString("ver"));
             rep.put("start", meta.getLong("start"));
             rep.put("duration", dur);
             rep.put("boosted", meta.optBoolean("boosted"));
@@ -627,12 +629,20 @@ public class SessionService extends Service {
             if ((rows.size() - 1) % step != 0) { ts.put((long) last[0]); temps.put(last[1]); bats.put((int) last[2]); }
             rep.put("t", ts); rep.put("temp", temps); rep.put("bat", bats);
 
-            // 저장 (최근 30개)
+            // 저장: 게임당 최근 20판, 전체 60판까지
             android.content.SharedPreferences prefs = c.getSharedPreferences("gb", MODE_PRIVATE);
             JSONArray all = new JSONArray(prefs.getString("sessions", "[]"));
             JSONArray out = new JSONArray();
             out.put(rep);
-            for (int i = 0; i < all.length() && out.length() < 30; i++) out.put(all.get(i));
+            java.util.Map<String, Integer> perGame = new java.util.HashMap<>();
+            perGame.put(rep.optString("pkg"), 1);
+            for (int i = 0; i < all.length() && out.length() < 60; i++) {
+                JSONObject o = all.getJSONObject(i);
+                int n = perGame.getOrDefault(o.optString("pkg"), 0);
+                if (n >= 20) continue;
+                perGame.put(o.optString("pkg"), n + 1);
+                out.put(o);
+            }
             prefs.edit().putString("sessions", out.toString()).putLong("pendingReport", rep.getLong("id")).apply();
             return rep;
         } catch (Exception e) {

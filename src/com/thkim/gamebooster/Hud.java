@@ -9,6 +9,8 @@ import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.BatteryManager;
+import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
@@ -41,8 +43,8 @@ public class Hud {
 
     private LinearLayout panel, bar, bubble;
     private View current;
-    private TextView tvRam, tvPing, tvHz, tvBat, tvTime, tvWarn, bTemp, bPing;
-    private TextView lRam, lPing, lHz, lBat, lTime;
+    private TextView tvRam, tvPing, tvHz, tvBat, tvTime, tvHeat, tvWarn, bTemp, bPing;
+    private TextView lRam, lPing, lBat, lTime, lHeat;
     private WindowManager.LayoutParams lp;
     private boolean minimized, landscape;
     private long collapseAt = Long.MAX_VALUE;
@@ -147,11 +149,12 @@ public class Hud {
         tvWarn.setVisibility(View.GONE);
         bodyBox.addView(tvWarn);
         tvRam = tv(15, TEXT, true); tvPing = tv(15, TEXT, true); tvHz = tv(15, TEXT, true);
-        tvBat = tv(15, TEXT, true); tvTime = tv(15, TEXT, true);
+        tvBat = tv(15, TEXT, true); tvTime = tv(15, TEXT, true); tvHeat = tv(15, TEXT, true);
         bodyBox.addView(row("여유 메모리", tvRam));
         bodyBox.addView(row("핑", tvPing));
         bodyBox.addView(row("화면", tvHz));
         bodyBox.addView(row("배터리", tvBat));
+        bodyBox.addView(row("발열", tvHeat));
         bodyBox.addView(row("플레이", tvTime));
         TextView fin = tv(15, 0xFF04151B, true);
         fin.setText("끝내고 리포트 보기");
@@ -174,9 +177,9 @@ public class Hud {
         TextView bolt = tv(13, YELLOW, true);
         bolt.setText("⚡");
         bar.addView(bolt);
-        lRam = tv(13, TEXT, true); lPing = tv(13, TEXT, true); lHz = tv(13, TEXT, true);
-        lBat = tv(13, TEXT, true); lTime = tv(13, TEXT, true);
-        for (TextView t : new TextView[]{lRam, lPing, lHz, lBat, lTime}) {
+        lRam = tv(13, TEXT, true); lPing = tv(13, TEXT, true);
+        lBat = tv(13, TEXT, true); lTime = tv(13, TEXT, true); lHeat = tv(13, TEXT, true);
+        for (TextView t : new TextView[]{lRam, lPing, lHeat, lBat, lTime}) {
             t.setPadding(dp(8), 0, dp(8), 0);
             bar.addView(t);
         }
@@ -324,6 +327,13 @@ public class Hud {
             lvl = bat.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / Math.max(1, bat.getIntExtra(BatteryManager.EXTRA_SCALE, 100));
             temp = bat.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0;
         }
+        // 기기 발열 단계 (안드로이드가 알려주는 값)
+        int th = 0;
+        if (Build.VERSION.SDK_INT >= 29) {
+            try { th = ((PowerManager) c.getSystemService(Context.POWER_SERVICE)).getCurrentThermalStatus(); } catch (Exception ignored) {}
+        }
+        String heatTxt = th >= 3 ? "성능 제한" : th == 2 ? "따뜻함" : th == 1 ? "약간 따뜻" : "정상";
+        int heatColor = th >= 3 ? RED : th == 2 ? ORANGE : GREEN;
         float hz = 60;
         try { hz = wm.getDefaultDisplay().getRefreshRate(); } catch (Exception ignored) {}
         long sec = (now - start) / 1000;
@@ -347,6 +357,7 @@ public class Hud {
         tvHz.setText(Math.round(hz) + "Hz");
         tvBat.setText(lvl + "%" + (tempTxt.isEmpty() ? "" : " · " + tempTxt)); tvBat.setTextColor(tColor);
         tvTime.setText(timeTxt);
+        tvHeat.setText(heatTxt); tvHeat.setTextColor(heatColor);
         tvWarn.setVisibility(hot || fl ? View.VISIBLE : View.GONE);
         tvWarn.setText(fl ? flashMsg : "과열 — 성능이 떨어질 수 있어요");
         tvWarn.setTextColor(fl ? YELLOW : RED);
@@ -355,7 +366,7 @@ public class Hud {
         // 한 줄 바
         lRam.setText("메모리 " + freePct + "%"); lRam.setTextColor(rColor);
         lPing.setText(pingTxt); lPing.setTextColor(pColor);
-        lHz.setText(Math.round(hz) + "Hz");
+        lHeat.setText(heatTxt); lHeat.setTextColor(heatColor);
         lBat.setText(lvl + "%" + (tempTxt.isEmpty() ? "" : " " + tempTxt)); lBat.setTextColor(tColor);
         lTime.setText(fl ? flashMsg : timeTxt); lTime.setTextColor(fl ? YELLOW : TEXT);
         bar.setBackground(bg(bgColor, border, dp(14)));
