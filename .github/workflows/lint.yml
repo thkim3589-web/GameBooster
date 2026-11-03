@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['src/**', 'res/**', 'AndroidManifest.xml', 'tools/lint/**']
+    paths: ['src/**', 'res/**', 'libs/**', 'AndroidManifest.xml', 'tools/lint/**']
 
 jobs:
   lint:
@@ -22,6 +22,6 @@ jobs:
         working-directory: tools/lint
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle -q :app:lintDebug --no-daemon
+          gradle -q :app:compileDebugJavaWithJavac :app:lintDebug --no-daemon
           echo "===== LINT REPORT ====="
           cat app/build/lint.txt

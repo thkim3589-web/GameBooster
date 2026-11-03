@@ -22,9 +22,9 @@ rm -rf build && mkdir -p build/res build/gen build/classes build/dex
 "$BT/aapt2" link -I "$PLAT" --manifest AndroidManifest.xml -A assets -o build/base.apk \
   --java build/gen build/res/*.flat --min-sdk-version 26 --target-sdk-version 33 \
   --version-code "$VERSION_CODE" --version-name "$VERSION_NAME"
-javac --release 8 -nowarn -encoding UTF-8 -classpath "$PLAT" -d build/classes \
+javac --release 8 -nowarn -encoding UTF-8 -classpath "$PLAT:$(ls libs/*.jar | tr '\n' ':')" -d build/classes \
   build/gen/com/thkim/gamebooster/R.java src/com/thkim/gamebooster/*.java
-"$BT/d8" --min-api 26 --lib "$PLAT" --output build/dex $(find build/classes -name '*.class')
+"$BT/d8" --min-api 26 --lib "$PLAT" --output build/dex $(find build/classes -name '*.class') libs/*.jar
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q ../unsigned.apk classes.dex)
 "$BT/zipalign" -f 4 build/unsigned.apk build/aligned.apk

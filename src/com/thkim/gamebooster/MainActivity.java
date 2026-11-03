@@ -778,6 +778,41 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {}
         }
 
+        // ---------- FPS 측정 시험 (Shizuku) ----------
+        @JavascriptInterface
+        public String fpsStatus() {
+            try { return FpsTest.status(MainActivity.this).toString(); } catch (Throwable e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void fpsRequestPermission() {
+            try { FpsTest.requestPermission(); } catch (Throwable ignored) {}
+        }
+
+        @JavascriptInterface
+        public boolean fpsStart(String pkg, String label) {
+            try { prefs.edit().remove("fpsLast").apply(); return FpsTest.start(MainActivity.this, pkg, label); }
+            catch (Throwable e) { return false; }
+        }
+
+        @JavascriptInterface
+        public void fpsStop() { FpsTest.stop(); }
+
+        @JavascriptInterface
+        public String fpsResult() { return prefs.getString("fpsLast", ""); }
+
+        /** Shizuku 앱 열기, 없으면 설치 페이지 */
+        @JavascriptInterface
+        public void openShizuku() {
+            runOnUiThread(() -> {
+                try {
+                    Intent i = getPackageManager().getLaunchIntentForPackage(FpsTest.SHIZUKU_PKG);
+                    if (i == null) i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store/apps/details?id=" + FpsTest.SHIZUKU_PKG));
+                    startActivity(i);
+                } catch (Exception ignored) {}
+            });
+        }
+
         @JavascriptInterface
         public boolean getThermalAlert() { return prefs.getBoolean("thermalAlert", false); }
 

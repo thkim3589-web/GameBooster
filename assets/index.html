@@ -320,6 +320,8 @@ nav{background:rgba(8,15,29,.96);border-top-color:#2b405e;padding-bottom:max(12p
       </div>
       <button class="btn" style="margin-top:12px" id="pingBtn" onclick="doPing()">핑 측정</button>
     </div>
+    <h3 class="secT">FPS 측정 <span class="badge warn" style="font-size:12px;padding:2px 8px;vertical-align:middle">시험 기능</span></h3>
+    <div class="card" style="margin-top:0" id="fpsCard"></div>
     <h3 class="secT">테스트</h3>
     <div class="card" style="margin-top:0">
       <div style="display:flex;gap:10px">
@@ -568,7 +570,7 @@ function go(t){
   document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   clearInterval(statTimer);
-  if(t==='tools'){renderBoost();renderStatus();renderReflexBest();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
+  if(t==='tools'){renderFps();renderBoost();renderStatus();renderReflexBest();loadLastCompare();statTimer=setInterval(renderStatus,3000)}
   if(t==='games'){loadGames()}
   if(t==='records'){loadSessions()}
   if(t==='settings'){loadSessions();renderBoost();renderStatus();renderPermSub()}
@@ -647,6 +649,8 @@ function toggleAutoDnd(el){
 /* ---------- 내 게임 ---------- */
 function loadGames(){ if(N) N.loadApps(false); else onMyGames('[]') }
 function onMyGames(json){
+  try{ fpsGames=JSON.parse(json).sort((a,b)=>a.label.localeCompare(b.label,'ko')) }catch(e){}
+  if(cur==='tools') renderFps();
   // 최근 기록이 있는 게임을 최근 순으로 위에, 나머지는 가나다순
   const last={}; let recs=[]; try{ recs=N&&N.getSessions?JSON.parse(N.getSessions()):[] }catch(e){}
   recs.forEach(s=>{ if(!(last[s.pkg]>=s.start)) last[s.pkg]=s.start });
@@ -661,6 +665,41 @@ function isOwn(p){ try{ return N&&N.getGameMode&&JSON.parse(N.getGameMode(p)).mo
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toggleEdit(){editing=!editing;$('gameGrid').classList.toggle('editing',editing);$('editBtn').textContent=editing?'완료':'편집'}
 function removeGame(p){N.setGame(p,false);loadGames()}
+/* ---------- FPS 측정 시험 (Shizuku) ---------- */
+let fpsGames=[], fpsWait=false;
+function renderFps(){
+  if(!N||!N.fpsStatus) return;
+  let s={}; try{ s=JSON.parse(N.fpsStatus()) }catch(e){}
+  const step=(ok,t,btn)=>`<div class="row" style="padding:6px 0"><div style="flex:1;min-width:0"><span style="color:${ok?'var(--green)':'var(--sub)'}">${ic(ok?'check':'info')}</span> ${t}</div>${!ok&&btn?btn:''}</div>`;
+  let h=`<div class="sub">실제 프레임 표시 시각을 읽어요. 추가 설정이 필요하고, 값을 못 읽으면 추정하지 않고 '측정 불가'로 알려줘요.</div>`
+    +step(s.installed,'Shizuku 앱 설치',`<button class="sessBtn" onclick="N.openShizuku()">설치</button>`)
+    +step(s.alive,'Shizuku 시작 (무선 디버깅)',s.installed?`<button class="sessBtn" onclick="N.openShizuku()">열기</button>`:'')
+    +step(s.allowed,'게임부스터 권한 허용',s.alive?`<button class="sessBtn" onclick="N.fpsRequestPermission()">허용</button>`:'');
+  if(s.old) h+=`<div class="sub" style="color:var(--orange)">Shizuku 버전이 오래됐어요. 최신 버전으로 업데이트해 주세요.</div>`;
+  if(s.running) h+=`<div class="advice" style="margin-top:8px">측정 중이에요. 게임을 45초쯤 플레이한 뒤 돌아오세요. 끝나면 알림이 와요.</div>`;
+  else if(s.allowed){
+    const list=fpsGames.length?fpsGames:[];
+    h+=`<select id="fpsGame" class="search" style="width:100%;margin:10px 0">${list.map(g=>`<option value="${esc(g.pkg)}">${esc(g.label)}</option>`).join('')}</select>
+      <button class="btn pri" ${list.length?'':'disabled'} onclick="fpsGo()">측정하며 게임 시작</button>
+      <div class="sub" style="font-size:14px;margin-top:6px">시작 15초 뒤부터 30초 동안 측정해요. 측정하는 동안 게임 화면이 계속 움직이게 플레이해 주세요.</div>`;
+  }
+  h+=renderFpsResult();
+  $('fpsCard').innerHTML=h;
+}
+function renderFpsResult(){
+  let r=null; try{ const j=N.fpsResult(); r=j?JSON.parse(j):null }catch(e){}
+  if(!r) return '';
+  const lay=(r.layers||[]).map(x=>`<div style="word-break:break-all">${esc(x)}</div>`).join('')||'찾은 화면 레이어 없음';
+  const diag=`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-size:14px;font-weight:700">진단 내용</summary><div class="sub" style="font-size:12px;margin-top:6px">${r.error?esc(r.error)+'<br>':''}프레임 ${r.frames||0}개${r.refreshHz?' · 화면 '+r.refreshHz+'Hz':''}<br>${lay}</div></details>`;
+  if(!r.ok) return `<div class="coach" style="margin-top:12px"><b>${esc(r.label||'')} 측정 불가</b><br>이 게임이나 기기에서는 프레임 정보를 충분히 읽지 못했어요. 진행 화면이 멈춰 있어도 이렇게 나올 수 있어요.${diag}</div>`;
+  return `<div class="coach" style="margin-top:12px"><b>${esc(r.label)} · ${r.seconds}초 측정</b><div class="stats" style="margin-top:8px"><div class="stat"><div class="k">평균 FPS</div><div class="v">${r.avgFps}</div></div><div class="stat"><div class="k">하위 1% FPS</div><div class="v">${r.low1Fps}</div></div><div class="stat wide"><div class="k">끊김</div><div class="v">${r.stutters}<small>회</small></div></div></div><div class="sub" style="font-size:13px;margin-top:6px">메뉴처럼 화면 변화가 적은 구간에서는 실제보다 낮게 나올 수 있어요. 게임 안 FPS 설정과 비교해 정확도를 확인해 주세요.</div>${diag}</div>`;
+}
+function fpsGo(){
+  const el=$('fpsGame'); if(!el||!el.value) return;
+  const label=el.options[el.selectedIndex].text;
+  if(!N.fpsStart(el.value,label)){ toast('측정을 시작하지 못했어요'); return }
+  fpsWait=true; launchGame(el.value,label);
+}
 /* ---------- 게임 실행 전 점검 (문제가 있을 때만 표시) ---------- */
 let pf=null;
 function pfItems(){
@@ -1395,6 +1434,7 @@ function onSessionShort(){ toast('게임 시간이 30초보다 짧아서 기록�
 
 window.onAppResume=()=>{
   $('overlay').classList.remove('on');   // 게임에서 돌아왔을 때 실행 안내가 남지 않게
+  if(fpsWait){ fpsWait=false; if(N.fpsStop) N.fpsStop(); go('tools'); setTimeout(renderFps,800); setTimeout(renderFps,5000) } else if(cur==='tools') renderFps();
   if($('onb').classList.contains('on')) renderOnb();
   if($('checkSheet').classList.contains('on')&&pf) pfRender();
   onUpdateReturn(); renderPermSub(); renderUsageHint();
