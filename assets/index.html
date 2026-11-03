@@ -182,6 +182,8 @@ nav button.on{color:var(--cyan)}
 .sessChk{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--sub);display:flex;align-items:center;justify-content:center;color:#04151B}
 .sess.sel .sessChk{background:var(--cyan);border-color:var(--cyan)}
 .secT{margin:18px 2px 10px;font-size:19px}
+.anCard .stat{min-width:0}
+.anCard .stat .v{font-size:23px}
 .sessBar{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 2px 12px}
 .sessBar.on{display:flex}
 .sessBtn{flex:none;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;font-size:15px;font-weight:700;white-space:nowrap}
@@ -223,6 +225,14 @@ nav button .i .ico{width:22px;height:22px}
 .tool.touching .thd{opacity:.12}
 .tool.touching .thd .tbtn{pointer-events:none}
 .ncc .hd2 span.lb{white-space:nowrap}
+
+/* 화면 다듬기 */
+:root{--bg:#080f1d;--card:#111d30;--card2:#1a2a43;--line:#263a56}
+body{background:radial-gradient(ellipse at 50% -15%,#18304c 0%,#080f1d 48%) no-repeat #080f1d}
+.card{border-radius:20px;background:linear-gradient(145deg,rgba(19,32,52,.98),rgba(14,24,41,.98));border-color:rgba(102,145,185,.18);box-shadow:0 10px 28px rgba(0,0,0,.22)}
+.btn{min-height:48px;border-radius:14px}
+.game{background:linear-gradient(160deg,#172840,#101b2d);border-color:rgba(113,153,192,.2);border-radius:18px}
+nav{background:rgba(8,15,29,.96);border-top-color:#2b405e;padding-bottom:max(12px,env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -258,6 +268,11 @@ nav button .i .ico{width:22px;height:22px}
 
   <!-- 탭2 기록 -->
   <section class="tab" id="t-records">
+    <div class="card anCard" id="anCard" style="display:none">
+      <h3>전체 요약</h3>
+      <div class="stats" id="anStats"></div>
+      <div class="sub" id="anNote" style="margin-top:10px"></div>
+    </div>
     <div id="statWrap" style="display:none">
       <h3 class="secT" style="margin-top:0">게임별 통계</h3>
       <div id="statList"></div>
@@ -1197,11 +1212,12 @@ function openStat(pkg){
       <div class="sub" style="font-size:14px">발열·성능 제한·과열 시간으로 계산해요</div><div class="sub" style="font-size:13px">기록은 게임당 최근 20판까지 저장되고, 이 안에서 계산해요</div></div></div>
     <div class="coach"><b>코치 한마디</b><br>${coachLines(list,st).join('<br>')}</div>
     <button class="btn" style="margin-top:10px" data-pkg="${esc(pkg)}" onclick="closeStat();openGfx(this.dataset.pkg)">${ic('sliders')} 이 게임 그래픽 추천 보기</button>
-    <div class="mlabel" style="margin-top:12px">판마다 최고 온도 (최근 ${recent.length}판) <span class="sub" style="font-size:13px;font-weight:600;color:#F87171">- - 42℃ 과열선</span></div>
+    <div class="mlabel" style="margin-top:12px">판마다 최고 온도 (최근 ${recent.length}판) <span class="sub" style="font-size:13px;font-weight:600;color:#F87171">- - 42℃ 참고선</span></div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-top:6px">
       <line x1="${pl}" x2="${W-pr}" y1="${y42.toFixed(1)}" y2="${y42.toFixed(1)}" stroke="#F87171" stroke-dasharray="4 4" opacity=".7"/>
       ${bars}
       ${recent.length>=2?`<text x="${pl}" y="${H-6}" font-size="10" fill="#94A3B8">오래전</text><text x="${W-pr}" y="${H-6}" font-size="10" fill="#94A3B8" text-anchor="end">최근</text>`:''}</svg>
+    <div class="sub" style="font-size:13px;margin:4px 2px 0">42℃는 배터리 온도를 비교하기 위한 참고선이에요. 모든 기기의 안전 한계를 뜻하지는 않아요.</div>
     <div class="rgrid">
       <div class="rbox"><div class="k">평균 플레이</div><div class="v">${Math.round(st.avgDur/60)}<small>분</small></div></div>
       <div class="rbox"><div class="k">평균 최고 온도</div><div class="v" style="color:${tColor(st.tAvg)}">${st.tAvg.toFixed(1)}<small>℃</small></div></div>
@@ -1234,8 +1250,19 @@ function renderSessionBar(){
     ?`<span class="cnt" style="color:var(--text)">${n}개를 삭제할까요?</span><button class="sessBtn" onclick="sessCancelAsk()">취소</button><button class="sessBtn" style="color:var(--red)" onclick="sessDelete()">삭제</button>`
     :`<button class="sessBtn" onclick="sessAll()">${n===sessions.length?'선택 해제':'전체 선택'}</button><span class="cnt">${n}개 선택</span><button class="sessBtn" style="color:${n?'var(--red)':'var(--sub)'}" ${n?'':'disabled'} onclick="sessDelete()">삭제</button>`;
 }
+function renderSummary(){
+  $('anCard').style.display=sessions.length?'':'none';
+  if(!sessions.length) return;
+  const total=sessions.reduce((a,s)=>a+(s.duration||0),0), d=sessions.filter(s=>drainOf(s)>=0).map(s=>s.perHour);
+  const hot=sessions.filter(s=>s.thermalMax>=3||s.hotMin>0).length, tAvg=avg(sessions.map(s=>s.tMax));
+  const box=(k,v,c)=>`<div class="stat"><div class="k">${k}</div><div class="v"${c?` style="color:${c}"`:''}>${v}</div></div>`;
+  $('anStats').innerHTML=box('누적 플레이',fmtDur(total))+box('평균 최고 온도',tAvg.toFixed(1)+'<small>℃</small>',tColor(tAvg))
+    +box('시간당 배터리',d.length?Math.round(avg(d))+'<small>%</small>':'<small>기록 부족</small>')
+    +box('발열 주의',hot+'<small>/'+sessions.length+'판</small>',hot?'var(--orange)':'var(--green)');
+  $('anNote').textContent=(hot?`${sessions.length}판 중 ${hot}판에서 42℃를 넘었거나 성능 제한이 있었어요. 어느 게임인지 아래 통계에서 확인해 보세요.`:'저장된 기록에서는 뚜렷한 발열 문제가 없어요.')+(d.length?'':' 시간당 배터리는 충전 없이 15분 이상, 2% 이상 줄어든 판부터 계산해요.');
+}
 function renderSessions(){
-  renderStats();
+  renderStats(); renderSummary();
   [...sessSel].forEach(id=>{ if(!sessions.some(s=>s.id===id)) sessSel.delete(id) });
   if(!sessions.length){ sessEdit=false; sessAsk=false }
   $('sessEditBtn').style.display=sessions.length?'':'none';
