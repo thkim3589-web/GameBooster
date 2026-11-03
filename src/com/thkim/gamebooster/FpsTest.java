@@ -86,6 +86,9 @@ final class FpsTest {
         sleep(LOAD_WAIT_MS);
         Map<String, TreeSet<Long>> frames = new HashMap<>();
         List<String> seen = new ArrayList<>();
+        String sample = null;
+        // 진단용: 화면 전체 갱신 횟수 (값을 표시하지는 않고, 다른 측정 방법을 판단할 때만 씀)
+        long flip0 = flips(svc), flipT0 = System.currentTimeMillis();
         long period = 0, end = System.currentTimeMillis() + CAPTURE_MS, nextList = 0;
         List<String> cand = new ArrayList<>();
         while (!stop && System.currentTimeMillis() < end) {
@@ -97,8 +100,18 @@ final class FpsTest {
             for (String l : cand) {
                 TreeSet<Long> set = frames.get(l);
                 if (set == null) { set = new TreeSet<>(); frames.put(l, set); }
-                long p = FpsCalc.parseLatency(run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--latency", l}), set);
+                String out = run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--latency", l});
+                long p = FpsCalc.parseLatency(out, set);
+                if (set.isEmpty()) {   // 기기에 따라 #번호 없는 이름으로만 조회됨
+                    String alt = FpsCalc.withoutId(l);
+                    if (!alt.equals(l)) {
+                        out = run(svc, new String[]{"dumpsys", "SurfaceFlinger", "--latency", alt});
+                        long p2 = FpsCalc.parseLatency(out, set);
+                        if (p2 > 0) p = p2;
+                    }
+                }
                 if (p > 0) period = p;
+                if (sample == null || (out != null && out.split("\n").length > sample.split("\n").length)) sample = out;
             }
             sleep(TICK_MS);
         }
@@ -111,6 +124,14 @@ final class FpsTest {
             if (n > most) { most = n; best = l; }
         }
         put(res, "layers", diag);
+        long flip1 = flips(svc), flipSec = (System.currentTimeMillis() - flipT0) / 1000;
+        if (flip0 >= 0 && flip1 > flip0 && flipSec > 0) put(res, "flipRate", (flip1 - flip0) / flipSec);
+        if (sample != null) {
+            String[] ls = sample.split("\n");
+            StringBuilder sb = new StringBuilder("응답 " + ls.length + "줄");
+            for (int i = 0; i < ls.length && i < 3; i++) sb.append(" | ").append(ls[i].trim());
+            put(res, "sample", sb.toString());
+        }
         if (period > 0) put(res, "refreshHz", Math.round(1e9 / period));
         FpsCalc.Result r = best == null ? new FpsCalc.Result() : FpsCalc.compute(frames.get(best));
         put(res, "frames", r.frames);
@@ -122,6 +143,15 @@ final class FpsTest {
             put(res, "stutters", r.stutters);
             put(res, "seconds", Math.round(r.seconds));
         }
+    }
+
+    /** SurfaceFlinger의 화면 갱신 누적 횟수 (못 읽으면 -1) */
+    private static long flips(IShizukuService svc) {
+        try {
+            String o = run(svc, new String[]{"service", "call", "SurfaceFlinger", "1013"});
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Parcel\\(([0-9a-fA-F]{8})").matcher(o);
+            return m.find() ? Long.parseLong(m.group(1), 16) : -1;
+        } catch (Throwable e) { return -1; }
     }
 
     /** 셸 명령 실행 (4초 안에 끝나지 않으면 중단) */

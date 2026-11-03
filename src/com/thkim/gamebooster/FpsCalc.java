@@ -15,17 +15,38 @@ final class FpsCalc {
         boolean ok; int frames; double avgFps, low1Fps; int stutters; double seconds;
     }
 
+    /** 최신 안드로이드의 RequestedLayerState{이름 parentId=...} 형식에서 실제 레이어 이름만 꺼낸다 */
+    static String cleanName(String raw) {
+        String l = raw.trim();
+        String prefix = "RequestedLayerState{";
+        if (l.startsWith(prefix)) {
+            l = l.substring(prefix.length());
+            if (l.endsWith("}")) l = l.substring(0, l.length() - 1);
+            int cut = l.indexOf(" parentId=");
+            if (cut < 0) cut = l.indexOf(" relativeParentId=");
+            if (cut < 0) cut = l.indexOf(" z=");
+            if (cut >= 0) l = l.substring(0, cut);
+        }
+        return l.trim();
+    }
+
+    /** 이름 끝의 #번호를 뺀 형태 (기기에 따라 이 이름으로만 조회될 수 있음) */
+    static String withoutId(String name) {
+        return name.replaceAll("#\\d+$", "");
+    }
+
     /** dumpsys SurfaceFlinger --list 에서 이 게임의 측정 후보 레이어 (SurfaceView 우선, 최대 max개) */
     static List<String> candidates(String listOutput, String pkg, int max) {
         List<String> sv = new ArrayList<>(), other = new ArrayList<>();
         if (listOutput == null) return sv;
         for (String raw : listOutput.split("\n")) {
-            String l = raw.trim();
+            String l = cleanName(raw);
             if (l.isEmpty() || !l.contains(pkg)) continue;
             String low = l.toLowerCase(Locale.ROOT);
             if (low.startsWith("background for") || low.startsWith("bounds for") || low.contains("activityrecord")
                     || low.startsWith("task=") || low.contains("animation")) continue;
-            if (low.contains("surfaceview")) { if (!sv.contains(l)) sv.add(l); }
+            if (low.contains("surfaceview") && low.contains("(blast)")) { if (!sv.contains(l)) sv.add(0, l); }
+            else if (low.contains("surfaceview")) { if (!sv.contains(l)) sv.add(l); }
             else if (!other.contains(l)) other.add(l);
         }
         sv.addAll(other);

@@ -690,7 +690,7 @@ function renderFpsResult(){
   let r=null; try{ const j=N.fpsResult(); r=j?JSON.parse(j):null }catch(e){}
   if(!r) return '';
   const lay=(r.layers||[]).map(x=>`<div style="word-break:break-all">${esc(x)}</div>`).join('')||'찾은 화면 레이어 없음';
-  const diag=`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-size:14px;font-weight:700">진단 내용</summary><div class="sub" style="font-size:12px;margin-top:6px">${r.error?esc(r.error)+'<br>':''}프레임 ${r.frames||0}개${r.refreshHz?' · 화면 '+r.refreshHz+'Hz':''}<br>${lay}</div></details>`;
+  const diag=`<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--cyan);font-size:14px;font-weight:700">진단 내용</summary><div class="sub" style="font-size:12px;margin-top:6px">${r.error?esc(r.error)+'<br>':''}프레임 ${r.frames||0}개${r.refreshHz?' · 화면 '+r.refreshHz+'Hz':''}${r.flipRate?' · 화면 갱신 초당 '+r.flipRate+'회':''}<br>${lay}${r.sample?'<div style="word-break:break-all;margin-top:4px">'+esc(r.sample)+'</div>':''}</div></details>`;
   if(!r.ok) return `<div class="coach" style="margin-top:12px"><b>${esc(r.label||'')} 측정 불가</b><br>이 게임이나 기기에서는 프레임 정보를 충분히 읽지 못했어요. 진행 화면이 멈춰 있어도 이렇게 나올 수 있어요.${diag}</div>`;
   return `<div class="coach" style="margin-top:12px"><b>${esc(r.label)} · ${r.seconds}초 측정</b><div class="stats" style="margin-top:8px"><div class="stat"><div class="k">평균 FPS</div><div class="v">${r.avgFps}</div></div><div class="stat"><div class="k">하위 1% FPS</div><div class="v">${r.low1Fps}</div></div><div class="stat wide"><div class="k">끊김</div><div class="v">${r.stutters}<small>회</small></div></div></div><div class="sub" style="font-size:13px;margin-top:6px">메뉴처럼 화면 변화가 적은 구간에서는 실제보다 낮게 나올 수 있어요. 게임 안 FPS 설정과 비교해 정확도를 확인해 주세요.</div>${diag}</div>`;
 }
@@ -1357,7 +1357,7 @@ function adviceText(s){
   if(drainOf(s)>=25) a.push(ic('battery','var(--orange)')+' 배터리 소모가 빠른 편이에요. 화면 밝기·주사율(Hz)을 낮추면 오래 할 수 있어요.');
   if(!a.length){
     if(s.charged) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. '+(s.chargedPart?'중간에 충전한 기록이라':'충전 중 기록이라')+' 배터리 소모는 평가하지 않았어요.');
-    else if(drainOf(s)<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. 배터리 소모는 평가하기엔 변화가 작았어요.');
+    else if(drainOf(s)<0) a.push(ic('thumb','var(--green)')+' 온도는 안정적이었어요. '+(s.duration<900?'플레이 시간이 15분보다 짧아 배터리 소모는 평가하지 않았어요.':'배터리 변화가 작아 소모는 평가하지 않았어요.'));
     else a.push(ic('thumb','var(--green)')+' 온도와 배터리 모두 안정적이었어요. 지금 환경이 좋아요.');
   }
   return `<div class="advice">${a.join('<br>')}</div>`;
