@@ -364,7 +364,7 @@ public class Hud {
         panel.setBackground(bg(bgColor, border, dp(16)));
 
         // 한 줄 바
-        lRam.setText("메모리 " + freePct + "%"); lRam.setTextColor(rColor);
+        lRam.setText("여유 " + freePct + "%"); lRam.setTextColor(rColor);
         lPing.setText(pingTxt); lPing.setTextColor(pColor);
         lHeat.setText(heatTxt); lHeat.setTextColor(heatColor);
         lBat.setText(lvl + "%" + (tempTxt.isEmpty() ? "" : " " + tempTxt)); lBat.setTextColor(tColor);

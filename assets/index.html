@@ -863,7 +863,7 @@ function onUpdateStage(s){
 function onUpdateReturn(){
   if(!upConfirm) return;
   upConfirm=false; upBusy=false; $('upLater').disabled=false; $('upGo').disabled=false;
-  $('upGo').textContent='설치 화면 다시 열기'; $('upStage').textContent='아직 설치가 끝나지 않았어요';
+  $('upGo').textContent='설치 화면 다시 열기'; $('upStage').textContent='설치가 진행 중일 수 있어요. 설치 화면이 사라졌다면 다시 열어 주세요';
 }
 function onUpdateError(msg){
   resetUpSheet(); toast(msg,4500);
@@ -1020,7 +1020,7 @@ function renderHudSet(){
     <div class="mlabel" style="margin-top:14px">미리보기</div>
     <div style="background:linear-gradient(135deg,#3f6212,#166534 40%,#1e3a8a);border-radius:14px;padding:14px;margin:8px 0 14px;overflow:hidden">
       <div style="display:inline-flex;align-items:center;gap:${7*sc}px;font-size:${11.5*sc}px;font-weight:700;background:rgba(8,12,20,${a});border:1.5px solid var(--cyan);border-radius:12px;padding:${5*sc}px ${10*sc}px;white-space:nowrap;max-width:100%;overflow:hidden">
-        <span style="color:var(--yellow)">${ic('zap')}</span><span>메모리 27%</span><span style="color:var(--green)">51ms</span><span style="color:var(--green)">정상</span><span style="color:var(--green)">83% 34.4℃</span><span>06:12</span><span style="color:var(--sub)">– ✕</span>
+        <span style="color:var(--yellow)">${ic('zap')}</span><span>여유 27%</span><span style="color:var(--green)">51ms</span><span style="color:var(--green)">정상</span><span style="color:var(--green)">83% 34.4℃</span><span>06:12</span><span style="color:var(--sub)">– ✕</span>
       </div>
       <div class="sub" style="color:#e2e8f0;font-size:12px;margin-top:6px">${d.line?'가로 화면 모양':'가로 화면에서도 세로와 같은 패널로 보여요'}</div>
     </div>`;
